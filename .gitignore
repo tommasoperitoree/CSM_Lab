@@ -179,8 +179,8 @@ pyrightconfig.json
 .ionide
 
 ### MacOs specific ###
-.DS_Store
+*.DS_Store
 
 ### Personal ###
 /References/
-/DiffusionScratch-main/
+/DiffusionModelScript/

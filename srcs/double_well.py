@@ -93,9 +93,9 @@ class double_well(base_system):
 
 		# Display the plot
 		# plt.title(f"Double Well Potential - NestedSamp step {int(conf_step)}")
-		path = f"./NestedSampling/configs/conf_{int(conf_step)}" 
+		path = f"./NestedSampling/nested_sampling_configs/conf_{int(conf_step)}" 
 		if sampling:
-			path = f"./NestedSampling/resources/conf_{int(conf_step)}_smpl" 
+			path = f"./NestedSampling/resources/sampling_results/conf_{int(conf_step)}_smpl" 
 		plt.savefig(path + ".png", dpi=300, bbox_inches='tight')
 		plt.close(fig)	
 

@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
 	for i in range(len(conf_steps)):
 
-		filepath = f"./NestedSampling/configs/conf_step_{conf_steps[i]}.dat"  # Path to the configuration file
+		filepath = f"./NestedSampling/nested_sampling_configs/conf_step_{conf_steps[i]}.dat"  # Path to the configuration file
 		#x = extract_configuration_from_file(filepath)
 		#data = x.clone().detach()
 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 		max_beta = 0.02
 		init_learning_rate = 1e-3
 		output_model_path = f"./NestedSampling/trained/diffusion_model_{conf_steps[i]}.pth"
-		loss_plot_path = f"./NestedSampling/resources/loss_plt_{conf_steps[i]}.png"
+		loss_plot_path = f"./NestedSampling/resources/loss_plots/loss_plt_{conf_steps[i]}.png"
 
 		print(f"\nTraining model for configuration step {conf_steps[i]}...\n")
 		loss = train(

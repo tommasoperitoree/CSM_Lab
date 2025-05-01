@@ -87,7 +87,7 @@ for i in range(max_steps):
 print()
 
 # Directory to save the configuration files
-output_dir = "./NestedSampling/configs"
+output_dir = "./NestedSampling/nested_sampling_configs"
 os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
 
 

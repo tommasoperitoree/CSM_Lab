@@ -136,7 +136,7 @@ def plot_autocorrelation_function(norm_corr, ener_corr, n_correl_steps, count_cu
 	plt.tight_layout()
 
 	# Save the plot to a file
-	output_plot_path = f"./NestedSampling/resources/autocorrelation_plot_{count_cum+1}.png"
+	output_plot_path = f"./NestedSampling/resources/autocorrelation_plots/ac_{count_cum+1}.png"
 	plt.savefig(output_plot_path)
 	print(f"Autocorrelation plot saved to {output_plot_path}")
 	
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 	print()
 
 	# Directory to save the configuration files
-	output_dir = "./NestedSampling/configs"
+	output_dir = "./NestedSampling/nested_sampling_configs"
 	os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
 
 

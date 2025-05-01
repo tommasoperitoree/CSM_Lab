@@ -96,10 +96,10 @@ if __name__ == "__main__":
 		min_beta = 1e-4
 		max_beta = 0.02
 		denoised_x = sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta)
-		save_path = f"./NestedSampling/resources/smpl_{conf_steps[i]}.gif"
+		save_path = f"./NestedSampling/resources/sampling_results/smpl_{conf_steps[i]}.gif"
 		create_sampling_animation(denoised_x, diffusion_steps, save_path)
 	
-		U_max = extract_U_max_from_file(f"./NestedSampling/configs/conf_step_{conf_steps[i]}.dat")
+		U_max = extract_U_max_from_file(f"./NestedSampling/nested_sampling_configs/conf_step_{conf_steps[i]}.dat")
 	
 		dw.plot_configuration(
 			denoised_x[0], U_max, conf_step=conf_steps[i], sampling=True
