@@ -3,9 +3,9 @@ import torch
 from matplotlib.animation import FuncAnimation
 
 from forward_process import calculate_parameters
-from prepare_dataset import extract_U_max_from_file
+from srcs.class_dataset import extract_U_max_from_file
 from simple_nn import SimpleNN
-from double_well import double_well
+from srcs.class_double_well_potential import double_well
 
 
 def sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta):

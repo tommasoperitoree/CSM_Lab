@@ -5,7 +5,7 @@ import torch.nn as nn
 import random
 import os
 
-from double_well import double_well
+from srcs.class_double_well_potential import double_well
 
 
 # Randomly choose another index that is not max_idx

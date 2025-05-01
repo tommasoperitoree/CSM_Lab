@@ -5,7 +5,7 @@ import torch.nn as nn
 import random
 import os
 
-from double_well import double_well
+from srcs.class_double_well_potential import double_well
 
 # Define system parameters
 n_particles = 1  # Number of particles

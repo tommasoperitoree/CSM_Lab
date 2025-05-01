@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from forward_process import calculate_data_at_certain_time, calculate_parameters
-from prepare_dataset import extract_configuration_from_file, ConfigurationsDataset
+from srcs.class_dataset import extract_configuration_from_file, ConfigurationsDataset
 from simple_nn import SimpleNN
 
 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 		max_beta = 0.02
 		init_learning_rate = 1e-3
 		output_model_path = f"./NestedSampling/trained/diffusion_model_{conf_steps[i]}.pth"
-		loss_plot_path = f"./NestedSampling/resources/loss_plots/loss_plt_{conf_steps[i]}.png"
+		loss_plot_path = f"./NestedSampling/resources/loss_plots/lp_{conf_steps[i]}.png"
 
 		print(f"\nTraining model for configuration step {conf_steps[i]}...\n")
 		loss = train(
