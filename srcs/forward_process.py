@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 from matplotlib.animation import FuncAnimation
 
-from prepare_dataset import extract_configuration_from_file
+from srcs.class_dataset import extract_configuration_from_file
 
 
 def calculate_parameters(diffusion_steps, min_beta, max_beta):
