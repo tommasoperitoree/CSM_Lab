@@ -17,8 +17,14 @@ class SimpleNN(nn.Module):
             nn.Linear(hidden_dim, input_dim),
         )
 
-    def forward(self, x, t):
-        input_data = torch.hstack([x, t])
+    def forward(self, x, t, c): 
+        """
+        Args:
+			x (torch.Tensor): Input tensor of shape (batch_size, input_dim).
+			t (torch.Tensor): Time step tensor of shape (batch_size, 1).
+			c (torch.Tensor): Conditioning variable tensor of shape (1).
+		"""
+        input_data = torch.hstack([x, t, c])
         return self.net(input_data)
 
 

@@ -42,14 +42,14 @@ def train(
 		model.train()  # Set the model to training mode
 		train_loss = 0
 
-		for x in train_loader:
-			# print("x shape: ", x.shape)
+		for item in train_loader:
+			x, c = item
 			random_time_step = torch.randint(0, diffusion_steps, size=[len(x), 1])
 			noised_x_t, eps = calculate_data_at_certain_time(
 				x, bar_alpha_ts, random_time_step
 			)
 			predicted_eps = model.forward(
-				noised_x_t.to(device), random_time_step.to(device)
+				noised_x_t.to(device), random_time_step.to(device), c.to(device)
 			)
 			loss = loss_fn(predicted_eps, eps.to(device))
 			optimizer.zero_grad()
@@ -65,13 +65,14 @@ def train(
 		test_loss = 0
 		
 		with torch.no_grad():  # Disable gradient calculations for efficiency
-			for x in test_loader :  # Iterate over test data
+			for item in test_loader :  # Iterate over test data
+				x, c = item
 				random_time_step = torch.randint(0, diffusion_steps, size=[len(x), 1])
 				noised_x_t, eps = calculate_data_at_certain_time(
 					x, bar_alpha_ts, random_time_step
 				)
 				predicted_eps = model.forward(
-					noised_x_t.to(device), random_time_step.to(device)
+					noised_x_t.to(device), random_time_step.to(device), c.to(device)
 				)
 				test_loss += loss_fn(predicted_eps, eps.to(device)).item()
 
