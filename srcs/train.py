@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from forward_process import calculate_data_at_certain_time, calculate_parameters
-from srcs.class_dataset import extract_configuration_from_file, ConfigurationsDataset
+from class_dataset import ConfigurationsDataset
 from simple_nn import SimpleNN
 
 
@@ -26,7 +26,7 @@ def train(
 	test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
 	model = SimpleNN().to(device)
-	optimizer = torch.optim.Adam(model.parameters(), lr=1e-6)
+	optimizer = torch.optim.Adam(model.parameters(), lr=init_learning_rate)
 	#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, threshold=1e-3, threshold_mode='rel', cooldown=0, min_lr=1e-9, eps=1e-10)
 	scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2)
 	loss_fn = nn.MSELoss()
@@ -95,7 +95,7 @@ def train(
 	return e_loss
 
 
-def plot_loss(loss, save_path, conf_step):
+def plot_loss(loss, save_path, conf_step=0, single_plot=False):
 	"""
 	Plot and save the train and test loss over epochs.
 
@@ -112,7 +112,12 @@ def plot_loss(loss, save_path, conf_step):
 	plt.plot(epochs, test_loss, label="Test Loss", linestyle='--')
 	plt.xlabel("Epoch")
 	plt.ylabel("Loss")
-	plt.title("Train and Test Loss Over Epochs for config step " + str(conf_step))
+	title = "Train and Test Loss Over Epochs"
+	if single_plot:
+		title += " for config step " + str(conf_step)
+	else:
+		title += " for all config steps"
+	plt.title(title)
 	#plt.yscale("log")  # Set y-axis to logarithmic scale
 	plt.legend()
 	#plt.ylim(0, 1)
@@ -129,50 +134,39 @@ if __name__ == "__main__":
 	device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 	print(f"Using {device} device")
 
-
-
 	# Define system parameters
 	sample_num = 100000
 	noise_std = 0.5
 
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
-	conf_steps = [5e3]  # Number of configuration steps
+	#conf_steps = [5e3]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
-	
+	filepaths = [f"./resources/nested_sampling_configs/conf_step_{step}.dat" for step in conf_steps]
 
-	for i in range(len(conf_steps)):
-
-		filepath = f"./NestedSampling/nested_sampling_configs/conf_step_{conf_steps[i]}.dat"  # Path to the configuration file
-		#x = extract_configuration_from_file(filepath)
-		#data = x.clone().detach()
-
-		test_fraction = 0.1 
-		train_data  = ConfigurationsDataset(filepath, test_fraction, train=True)
-		test_data = ConfigurationsDataset(filepath, test_fraction, train=False)
-
-		batch_size = 128
-		max_epochs = 100
-		diffusion_steps = 50
-		min_beta = 1e-4
-		max_beta = 0.02
-		init_learning_rate = 1e-3
-		output_model_path = f"./NestedSampling/trained/diffusion_model_{conf_steps[i]}.pth"
-		loss_plot_path = f"./NestedSampling/resources/loss_plots/lp_{conf_steps[i]}.png"
-
-		print(f"\nTraining model for configuration step {conf_steps[i]}...\n")
-		loss = train(
-			train_data,
-			test_data,
-			batch_size,
-			device,
-			max_epochs,
-			diffusion_steps,
-			min_beta,
-			max_beta,
-			init_learning_rate,
-			output_model_path,
-		)
-
-		# Plot and save the loss
-		plot_loss(loss, loss_plot_path, conf_steps[i])
-		print("\n")
+	test_fraction = 0.1 
+	train_data  = ConfigurationsDataset(filepaths, test_fraction, train=True)
+	test_data = ConfigurationsDataset(filepaths, test_fraction, train=False)
+	batch_size = 128
+	max_epochs = 300
+	diffusion_steps = 50
+	min_beta = 1e-4
+	max_beta = 0.02
+	init_learning_rate = 1e-3
+	output_model_path = f"./trained/diffusion_model_tot.pth"
+	loss_plot_path = f"./resources/loss_plots/lp_tot.png"
+	print(f"\nTraining model for configuration steps {conf_steps}...\n")
+	loss = train(
+		train_data,
+		test_data,
+		batch_size,
+		device,
+		max_epochs,
+		diffusion_steps,
+		min_beta,
+		max_beta,
+		init_learning_rate,
+		output_model_path,
+	)
+	# Plot and save the loss
+	plot_loss(loss, loss_plot_path)
+	print("\n")

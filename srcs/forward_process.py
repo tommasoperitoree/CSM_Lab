@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 from matplotlib.animation import FuncAnimation
 
-from srcs.class_dataset import extract_configuration_from_file
+from class_dataset import extract_configuration_from_file
 
 
 def calculate_parameters(diffusion_steps, min_beta, max_beta):
@@ -63,12 +63,12 @@ if __name__ == "__main__":
 	conf_steps = [int(step) for step in conf_steps]
 	
 	for i in range(len(conf_steps)):
-		filepath = f"./NestedSampling/nested_sampling_configs/conf_step_{conf_steps[i]}.dat"  # Path to the configuration file
+		filepath = f"./resources/nested_sampling_configs/conf_step_{conf_steps[i]}.dat"  # Path to the configuration file
 		x = extract_configuration_from_file(filepath)
 		data = x.clone().detach()
 	
 		diffusion_steps = 50
 		min_beta = 1e-4
 		max_beta = 0.02
-		save_path = f"./NestedSampling/resources/forward_process/fwd_{conf_steps[i]}.gif"
+		save_path = f"./resources/forward_process/fwd_{conf_steps[i]}.gif"
 		create_forward_process_animation(x, diffusion_steps, min_beta, max_beta, save_path)

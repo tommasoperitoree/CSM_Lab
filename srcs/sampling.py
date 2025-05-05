@@ -3,9 +3,9 @@ import torch
 from matplotlib.animation import FuncAnimation
 
 from forward_process import calculate_parameters
-from srcs.class_dataset import extract_U_max_from_file
+from class_dataset import extract_U_max_from_file
 from simple_nn import SimpleNN
-from srcs.class_double_well_potential import double_well
+from class_double_well_potential import double_well
 
 
 def sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max):
@@ -26,6 +26,7 @@ def sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max)
 			else:
 				z = 0
 			ts = torch.full((x_init.shape[0], 1), t)
+			c = torch.full((x_init.shape[0], 1), U_max)
 			mu = (
 				1
 				/ torch.sqrt(alpha_ts[t])
@@ -34,7 +35,7 @@ def sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max)
 						denoised_x[t]
 						- (1 - alpha_ts[t])
 						/ torch.sqrt(1 - bar_alpha_ts[t])
-						* model.forward(denoised_x[t], ts, U_max)
+						* model.forward(denoised_x[t], ts, c)
 					)
 				)
 			)
@@ -70,6 +71,8 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 
 
 if __name__ == "__main__":
+
+	smpl_conf = False
 	
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
@@ -89,21 +92,33 @@ if __name__ == "__main__":
 	# Instantiate the double-well system
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
-	for i in range(len(conf_steps)):
-		model_path = f"./NestedSampling/trained/diffusion_model_{conf_steps[i]}.pth"
-		sample_num = 100000
-		diffusion_steps = 50
-		min_beta = 1e-4
-		max_beta = 0.02
+	sample_num = 100000
+	diffusion_steps = 50
+	min_beta = 1e-4
+	max_beta = 0.02
+
+	if smpl_conf:
+		for i in range(len(conf_steps)):
+			model_path = f"./trained/diffusion_model_{conf_steps[i]}.pth"
+			U_max = 0 # Conditioning variable (U_max), how should this be defined?
+			denoised_x = sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max)
+			save_path = f"./resources/sampling_results/smpl_{conf_steps[i]}.gif"
+			create_sampling_animation(denoised_x, diffusion_steps, save_path)
+
+			U_max = extract_U_max_from_file(f"./resources/nested_sampling_configs/conf_step_{conf_steps[i]}.dat")
+
+			dw.plot_configuration(
+				denoised_x[0], U_max, conf_step=conf_steps[i], sampling=True
+			)  # Plot the final configuration
+
+			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
+	else:
+		model_path = f"./trained/diffusion_model_tot.pth"
 		U_max = 0 # Conditioning variable (U_max), how should this be defined?
 		denoised_x = sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max)
-		save_path = f"./NestedSampling/resources/sampling_results/smpl_{conf_steps[i]}.gif"
+		save_path = f"./resources/sampling_results/smpl_tot.gif"
 		create_sampling_animation(denoised_x, diffusion_steps, save_path)
-	
-		U_max = extract_U_max_from_file(f"./NestedSampling/nested_sampling_configs/conf_step_{conf_steps[i]}.dat")
-	
 		dw.plot_configuration(
-			denoised_x[0], U_max, conf_step=conf_steps[i], sampling=True
+			denoised_x[0], U_max, sampling=True
 		)  # Plot the final configuration
-		  
-		print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
+		print(f"Sampling animation & final configuration saved for all configuration steps and input energy {U_max}")

@@ -52,7 +52,7 @@ class double_well(base_system):
 		else:
 			return torch.from_numpy(conf.astype(np.float32)).to(self.device)
 		
-	def plot_configuration (self, x_conf, U_max, conf_step, sampling=False):
+	def plot_configuration (self, x_conf, conf_step=0, U_max = 0, U_max_cont=True, sampling=False):
 		# Define grid for visualization
 		x = np.linspace(-2.5, 2.5, 100)
 		y = np.linspace(-5, 5, 100)
@@ -89,13 +89,16 @@ class double_well(base_system):
 		# Highlight specific energy level with a contour
 		if not sampling:
 			U_max =	U_max.cpu().numpy()
-		ax.contour(X, Y, Z_target, levels=[U_max], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
+		if U_max_cont:
+			ax.contour(X, Y, Z_target, levels=[U_max], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
 
 		# Display the plot
 		# plt.title(f"Double Well Potential - NestedSamp step {int(conf_step)}")
-		path = f"./NestedSampling/nested_sampling_configs/conf_{int(conf_step)}" 
+		path = f"./resources/nested_sampling_configs/conf_{int(conf_step)}" 
+		if sampling and conf_step != 0:
+			path = f"./resources/sampling_results/conf_{int(conf_step)}_smpl" 
 		if sampling:
-			path = f"./NestedSampling/resources/sampling_results/conf_{int(conf_step)}_smpl" 
+			path = f"./resources/sampling_results/conf_tot"
 		plt.savefig(path + ".png", dpi=300, bbox_inches='tight')
 		plt.close(fig)	
 
