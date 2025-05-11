@@ -5,29 +5,7 @@ import torch.nn as nn
 import random
 import os
 
-from srcs.class_double_well_potential import double_well
-
-# Define system parameters
-n_particles = 1  # Number of particles
-dimensions = 2  # 2D system
-n_live_points = int(1e4)  # Number of live points in nested sampling
-n_correl_steps = 5  # Number of correlation steps
-
-# Set device (MPS is for Apple Silicon Macs with Metal Performance Shaders support)
-device = "cpu"  # Force CPU for compatibility
-# device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-# print(f"Using {device} device")
-
-
-# Instantiate the double-well system
-dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
-
-# Initialize configurations for nested sampling
-x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
-
-# Compute energy for all configurations
-U_x = dw.energy(x)  
-
+from class_double_well_potential import double_well
 
 # Randomly choose another index that is not max_idx
 def rnd_idx (n_live_points, max_idx):
@@ -56,59 +34,81 @@ def nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions):
 	acceptance /= (n_live_points * n_correl_steps)  # Calculate acceptance rate
 	return acceptance  # Return acceptance rate
 
+def plot_saved_configurations (x_conf, conf_steps, U_max_conf):
+	# Directory to save the configuration files
+	output_dir = "./resources/nested_sampling_configs"
+	os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
 
-# conf_steps = [5e3]
-conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
-max_steps = int(max(conf_steps))  # Maximum number of steps
-x_conf, U_max_conf = [], []
+	for i, conf_step in enumerate(conf_steps):
+		x = x_conf[i]  # Get the configuration at the current step
+		U_max = U_max_conf[i]  # Get the maximum energy for the current configuration
 
-U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
-dx = 0.6
+		# File name for the current configuration
+		output_file = os.path.join(output_dir, f"conf_step_{int(conf_step)}.dat")
 
-for i in range(max_steps):
-	rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
-	x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
-	U_x[max_idx] = U_x[rnd_i]
+		# Save the configuration to the file
+		with open(output_file, "w") as f:
+			# Write the step and U_max
+			f.write(f"# Step: {conf_step}\n")
+			f.write(f"# U_max: {U_max.item()}\n")
 
-	acceptance_ratio = nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions) 
-	if acceptance_ratio < 0.5 : dx /= 2
+			# Write the tensor x
+			f.write("# x (configurations):\n")
+			np.savetxt(f, x.cpu().numpy(), fmt="%.6f")  # Save the tensor as a NumPy array
+
+		print(f"Saved configuration for step {conf_step} to {output_file}")
+
+		# Plot the configuration
+		dw.plot_configuration(x_conf=x, conf_step=conf_step, U_max=U_max)  # Plot the configuration 
+
+if __name__ == "__main__":
+
+	# Define system parameters
+	n_particles = 1  # Number of particles
+	dimensions = 2  # 2D system
+	n_live_points = int(1e4)  # Number of live points in nested sampling
+	n_correl_steps = 5  # Number of correlation steps
+
+	# Set device (MPS is for Apple Silicon Macs with Metal Performance Shaders support)
+	device = "cpu"  # Force CPU for compatibility
+	# device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+	# print(f"Using {device} device")
+
+
+	# Instantiate the double-well system
+	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
+
+	# Initialize configurations for nested sampling
+	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
+
+	# Compute energy for all configurations
+	U_x = dw.energy(x)  
+
+	#conf_steps = [5e3]
+	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
+	max_steps = int(max(conf_steps))  # Maximum number of steps
+	x_conf, U_max_conf = [], []
 
 	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
+	dx = 0.6
 
-	# Save the configuration if the current step is in conf_steps
-	if (i + 1) in conf_steps:
-		U_max_conf.append(U_max)
-		x_conf.append(x.clone())  # Save a copy of the current configuration
+	for i in range(max_steps):
+		rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
+		x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
+		U_x[max_idx] = U_x[rnd_i]
 
-	# Print progress bar
-	print(f"\rStep {i + 1} of {max_steps} ({(i/max_steps)*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx} | Saved configurations: {len(x_conf)}", end="")
+		acceptance_ratio = nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions) 
+		if acceptance_ratio < 0.5 : dx /= 2
 
-# Print a newline after the loop to avoid overwriting the last line
-print()
+		U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 
-# Directory to save the configuration files
-output_dir = "./NestedSampling/nested_sampling_configs"
-os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
+		# Save the configuration if the current step is in conf_steps
+		if (i + 1) in conf_steps:
+			U_max_conf.append(U_max)
+			x_conf.append(x.clone())  # Save a copy of the current configuration
 
 
-for i, conf_step in enumerate(conf_steps):
-	x = x_conf[i]  # Get the configuration at the current step
-	U_max = U_max_conf[i]  # Get the maximum energy for the current configuration
+		# Print progress bar
+		print(f"\rStep {i + 1} of {max_steps} ({(i/max_steps)*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx}", end="")
 
-	# File name for the current configuration
-	output_file = os.path.join(output_dir, f"conf_step_{int(conf_step)}.dat")
-
-	# Save the configuration to the file
-	with open(output_file, "w") as f:
-		# Write the step and U_max
-		f.write(f"# Step: {conf_step}\n")
-		f.write(f"# U_max: {U_max.item()}\n")
-
-		# Write the tensor x
-		f.write("# x (configurations):\n")
-		np.savetxt(f, x.cpu().numpy(), fmt="%.6f")  # Save the tensor as a NumPy array
-
-	# print(f"Saved configuration for step {conf_step} to {output_file}")
-
-	# Plot the configuration
-	dw.plot_configuration(x, U_max, conf_step)  # Plot the configuration 
+	plot_saved_configurations()

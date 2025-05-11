@@ -20,12 +20,13 @@ def train(
 	max_beta,
 	init_learning_rate,
 	output_model_path,
+	cond=True,
 ):
 
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
-	model = SimpleNN().to(device)
+	model = SimpleNN(cond=cond).to(device)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_learning_rate)
 	#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, threshold=1e-3, threshold_mode='rel', cooldown=0, min_lr=1e-9, eps=1e-10)
 	scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2)
@@ -43,14 +44,23 @@ def train(
 		train_loss = 0
 
 		for item in train_loader:
-			x, c = item
+			if cond:
+				x, c = item
+			else:
+				x = item
+			
 			random_time_step = torch.randint(0, diffusion_steps, size=[len(x), 1])
 			noised_x_t, eps = calculate_data_at_certain_time(
 				x, bar_alpha_ts, random_time_step
 			)
-			predicted_eps = model.forward(
-				noised_x_t.to(device), random_time_step.to(device), c.to(device)
-			)
+			if cond:
+				predicted_eps = model.forward(
+					noised_x_t.to(device), random_time_step.to(device), c.to(device)
+				)
+			else:
+				predicted_eps = model.forward(
+					noised_x_t.to(device), random_time_step.to(device)
+				)
 			loss = loss_fn(predicted_eps, eps.to(device))
 			optimizer.zero_grad()
 			loss.backward()
@@ -66,14 +76,22 @@ def train(
 		
 		with torch.no_grad():  # Disable gradient calculations for efficiency
 			for item in test_loader :  # Iterate over test data
-				x, c = item
+				if cond:
+					x, c = item
+				else:
+					x = item
 				random_time_step = torch.randint(0, diffusion_steps, size=[len(x), 1])
 				noised_x_t, eps = calculate_data_at_certain_time(
 					x, bar_alpha_ts, random_time_step
 				)
-				predicted_eps = model.forward(
-					noised_x_t.to(device), random_time_step.to(device), c.to(device)
-				)
+				if cond:
+					predicted_eps = model.forward(
+						noised_x_t.to(device), random_time_step.to(device), c.to(device)
+					)
+				else:
+					predicted_eps = model.forward(
+						noised_x_t.to(device), random_time_step.to(device), c.to(device)
+					)
 				test_loss += loss_fn(predicted_eps, eps.to(device)).item()
 
 		test_loss /= len(test_loader)  # Calculate average test loss

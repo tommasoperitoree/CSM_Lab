@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import matplotlib.colors as mcolors
+
 
 # Base class for physical systems
 class base_system(nn.Module):
@@ -28,15 +30,24 @@ class double_well(base_system):
 		self.c = c  # Strength of double-well potential
 		self.d = d  # Linear term coefficient
 
+		# Normalization 
+		conf = self.init_conf(n_points=int(1e4))
+		conf_energy = self.energy(conf, normalize=False)
+		e_max = conf_energy.max()
+		self.eps = 1/e_max  # Normalize energy to 1
+
 	# Define the energy function
-	def energy(self, x):
+	def energy(self, x, normalize=True):
 		if len(x.shape) < 2:  # Single configuration
-			return self.eps * (self.c * (x[0]**2 - 1)**2 + (x[0] - x[1])**2 + self.d * (x[0] + x[1]))
+			energy = (self.c * (x[0]**2 - 1)**2 + (x[0] - x[1])**2 + self.d * (x[0] + x[1]))
 		elif len(x.shape) == 2:  # Batch of configurations
-			return self.eps * (self.c * (x[:, 0]**2 - 1)**2 + (x[:, 0] - x[:, 1])**2 + self.d * (x[:, 0] + x[:, 1]))
+			energy = (self.c * (x[:, 0]**2 - 1)**2 + (x[:, 0] - x[:, 1])**2 + self.d * (x[:, 0] + x[:, 1]))
+		if normalize:
+			energy *= self.eps
+		return energy
 
 	# Initialize random configuration within given bounds
-	def init_conf(self, n_points=1, lower_bounds=[-3.5, -6], upper_bounds=[3.5, 6], asNumpy=False): 
+	def init_conf(self, n_points=1, lower_bounds=[-2.5, -5], upper_bounds=[2.5, 5], asNumpy=False): 
 		# careful, bounds should match number of dimensions
 		if len(lower_bounds) != self.dimensions or len(upper_bounds) != self.dimensions:
 			raise ValueError("Lower bounds must match the number of dimensions.")
@@ -54,8 +65,11 @@ class double_well(base_system):
 		
 	def plot_configuration (self, x_conf, conf_step=0, U_max = 0, U_max_cont=True, sampling=False):
 		# Define grid for visualization
-		x = np.linspace(-2.5, 2.5, 100)
-		y = np.linspace(-5, 5, 100)
+		upper_lim = 5.5
+		lower_lim = -5.5
+		x = np.linspace(lower_lim, upper_lim, 200)
+		y = np.linspace(lower_lim, upper_lim, 200)
+		# Create a meshgrid for contour plotting
 		X, Y = np.meshgrid(x, y)
 
 		# Compute energy landscape
@@ -73,24 +87,32 @@ class double_well(base_system):
 		# Set figure size (in inches)
 		#fig_size = (24 * 0.393701, 24 * 0.393701)  # Convert from cm to inches
 		#fig, ax = plt.subplots(figsize=fig_size, dpi=100)
-		fig, ax = plt.subplots(dpi=100)
+		fig, ax = plt.subplots(figsize=(7,7), dpi=100)
 
 		# Set plot limits
-		ax.set_xlim(-6.22, 6.22)
-		ax.set_ylim(-6.22, 6.22)
-		
+		ax.set_xlim(lower_lim, upper_lim)
+		ax.set_ylim(lower_lim, upper_lim)
 
 		# Scatter plot of sampled particle positions
 		ax.scatter(cpu_samples[:, 0], cpu_samples[:, 1], s=0.02, zorder=10, alpha=0.5)
 
-		# Contour plot of energy landscape
-		ax.contour(X, Y, Z_target, levels=np.arange(-30, 30, 0.5), cmap="Greys_r", alpha=1, linewidths=1, zorder=0)
+		num_contour_levels = 80
+		lower_bound_contour = -0.013
+		upper_bound_contour = 0.2
+		contour_levels = np.linspace(lower_bound_contour, upper_bound_contour, num_contour_levels)
+
+		norm_greyscale = mcolors.Normalize(vmin=np.min(contour_levels), vmax=np.max(contour_levels))
+	
+		ax.contour(X, Y, Z_target, levels=contour_levels, cmap="Greys_r", norm=norm_greyscale, linewidths=1, alpha=0.3, zorder=0)
 
 		# Highlight specific energy level with a contour
 		if not sampling:
-			U_max =	U_max.cpu().numpy()
+			if isinstance(U_max, torch.Tensor):
+				U_max_val =	U_max.cpu().numpy()
+			else:
+				U_max_val = U_max
 		if U_max_cont:
-			ax.contour(X, Y, Z_target, levels=[U_max], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
+			ax.contour(X, Y, Z_target, levels=[U_max_val], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
 
 		# Display the plot
 		# plt.title(f"Double Well Potential - NestedSamp step {int(conf_step)}")
@@ -98,7 +120,7 @@ class double_well(base_system):
 		if sampling and conf_step != 0:
 			path = f"./resources/sampling_results/conf_{int(conf_step)}_smpl" 
 		if sampling:
-			path = f"./resources/sampling_results/conf_tot"
+			path = f"./resources/sampling_results/conf_U={U_max_val}"
 		plt.savefig(path + ".png", dpi=300, bbox_inches='tight')
 		plt.close(fig)	
 

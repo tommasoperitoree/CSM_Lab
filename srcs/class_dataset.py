@@ -15,7 +15,7 @@ class ConfigurationsDataset (Dataset) :
 		train (bool): If True, load training data; if False, load testing data.
 		transform (callable, optional): Optional transform to be applied on a sample.
 	"""
-	def __init__(self, filepaths, testfraction, train=True, transform=None):
+	def __init__(self, filepaths, testfraction, train=True, cond=True, transform=None):
 		self.filepaths = filepaths
 		self.transform = transform
 		self.train = train
@@ -69,8 +69,10 @@ class ConfigurationsDataset (Dataset) :
 		condition = self.cond[idx]
 		if self.transform:
 			sample = self.transform(sample)
-			
-		return sample, condition
+		if self.cond:
+			return sample, condition
+		else:
+			return sample
 	
 # OLD functions implemented in the class
 
