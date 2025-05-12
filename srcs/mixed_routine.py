@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = True
+	all_live_samples = False
 	extrapolate = False
 
 	n_mixed_routine_steps = 4
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 		else :
 			dir_add += "uncond_"
 	else :
-		dir_add = f"./resources/mixed_routine/lls_"
+		dir_add = f"lls_"
 		if training_conditioning :
 			dir_add += "cond_"
 		else :
@@ -141,10 +141,10 @@ if __name__ == "__main__":
 		### Sampling segment
 		print("\n__ Sampling segment __")
 		if training_conditioning:
-			z = torch.randn(diffusion_steps, sample_num, 2)
+			z = torch.randn(sample_num, dimensions+1)
 			z[0] = 0
 		else :
-			z = torch.randn(diffusion_steps, sample_num, 1)
+			z = torch.randn(sample_num, dimensions)
 
 		sampled_x_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
@@ -173,4 +173,4 @@ if __name__ == "__main__":
 
 	print("")
 	output_final_conf = dir_prefix + "finalconf"
-	save_configurations(dw, x, [n_mixed_routine_steps+1], U_max, output_final_conf, plot=True, mixed=True)
+	save_configurations(dw, x, -1, U_max, output_final_conf, plot=True, mixed=True)

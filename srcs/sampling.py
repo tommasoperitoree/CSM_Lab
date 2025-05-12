@@ -18,9 +18,8 @@ def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_m
 		beta_ts, alpha_ts, bar_alpha_ts = calculate_parameters(
 			diffusion_steps, min_beta, max_beta
 		)
-		denoised_x = torch.zeros((diffusion_steps, z.shape[1], z.shape[2]))
-		if not cond :
-			denoised_x = torch.zeros((diffusion_steps, z.shape[1]))
+		denoised_x = torch.zeros(diffusion_steps, z.shape[1])
+		print(f"denoised_x size = {denoised_x.shape}")
 
 		denoised_x[-1] = z[-1]
 		for t in range(diffusion_steps - 1, 0, -1):
@@ -89,7 +88,7 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 
 if __name__ == "__main__":
 
-	conditioning = True
+	conditioning = False
 	
 	conf_steps = [5e3]
 	#conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
@@ -117,32 +116,31 @@ if __name__ == "__main__":
 
 	U_max_list = [3, 0, -3]
 
-	if conditioning:
-		z = torch.randn(diffusion_steps, sample_num, 1)
-		for i in range(len(conf_steps)):
-			model_path = f"./trained/diffusion_model_{conf_steps[i]}.pth"
-			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
-			save_path = f"./resources/sampling_results/smpl_{conf_steps[i]}.gif"
-			create_sampling_animation(denoised_x, diffusion_steps, save_path)
-
-			U_max = extract_U_max_from_file(f"./resources/nested_sampling_configs/conf_step_{conf_steps[i]}.dat")
-
-			dw.plot_configuration(
-				denoised_x[0], U_max, conf_step=conf_steps[i], sampling=True
-			)  # Plot the final configuration
-
-			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
-	
-	else:
+	if conditioning :
 		for u in U_max_list:
-			z = torch.randn(diffusion_steps, sample_num, 2)
+			z = torch.randn(sample_num, dimensions+1)
 			z[0] = 0
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
 			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, u)
-			save_path = f"./resources/sampling_results/smpl_U={u}.gif"
-			create_sampling_animation(denoised_x, diffusion_steps, save_path)
+			save_path = f"./resources/sampling_results/smpl_U={u}"
+			create_sampling_animation(denoised_x, diffusion_steps, save_path + ".gif")
 			dw.plot_configuration(
-				denoised_x[0], U_max=u, sampling=True
+				save_path, denoised_x[0], U_max=u, sampling=True
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
+	else :
+		z = torch.randn(sample_num, dimensions)
+		for i in range(len(conf_steps)):
+			model_path = f"./trained/diffusion_model_{conf_steps[i]}.pth"
+			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
+			save_path = f"./resources/sampling_results/smpl_{conf_steps[i]}"
+			create_sampling_animation(denoised_x, diffusion_steps, save_path + ".gif")
+
+			U_max = extract_U_max_from_file(f"./resources/nested_sampling_configs/conf_step_{conf_steps[i]}.dat")
+
+			dw.plot_configuration(
+				save_path, denoised_x[0], conf_steps[i], U_max, sampling=True
+			)  # Plot the final configuration
+
+			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")

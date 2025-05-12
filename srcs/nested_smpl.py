@@ -44,7 +44,8 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 			U_max = U_max_confs
 
 		# File name for the current configuration
-		output_file = output_dir + f"conf_step{int(conf_step)}"
+		if i != -1 : output_file = output_dir + f"conf_step{int(conf_step)}"
+		else : output_file = output_dir
 		
 		# Save the configuration to the file
 		with open(output_file + ".dat", "w") as f:
@@ -59,7 +60,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		print(f"Saved configuration for step {conf_step} to {output_file}")
 
 		# Plot the configuration
-		if plot : dw.plot_configuration(output_file, x_conf=x, conf_step=conf_step, U_max=U_max, mixed=mixed)  # Plot the configuration 
+		if plot : dw.plot_configuration(output_file, x_conf=x, conf_step=conf_step, U_max=U_max)  # Plot the configuration 
 
 if __name__ == "__main__":
 

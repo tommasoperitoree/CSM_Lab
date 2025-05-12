@@ -63,7 +63,7 @@ class double_well(base_system):
 		else:
 			return torch.from_numpy(conf.astype(np.float32)).to(self.device)
 		
-	def plot_configuration (self, output_dir, x_conf, conf_step=0, U_max = 0, U_max_cont=True, sampling=False, mixed=False, cond=False, all_ls=False):
+	def plot_configuration (self, output_dir, x_conf, conf_step=0, U_max = 0, U_max_cont=True, sampling=False):
 		# Define grid for visualization
 		upper_lim = 5.5
 		lower_lim = -5.5
@@ -106,11 +106,11 @@ class double_well(base_system):
 		ax.contour(X, Y, Z_target, levels=contour_levels, cmap="Greys_r", norm=norm_greyscale, linewidths=1, alpha=0.3, zorder=0)
 
 		# Highlight specific energy level with a contour
-		if not sampling:
-			if isinstance(U_max, torch.Tensor):
-				U_max_val =	U_max.cpu().numpy()
-			else:
-				U_max_val = U_max
+		if not sampling and isinstance(U_max, torch.Tensor):
+			U_max_val =	U_max.cpu().numpy().item()
+		else:
+			U_max_val = U_max
+		
 		if U_max_cont:
 			ax.contour(X, Y, Z_target, levels=[U_max_val], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
 
