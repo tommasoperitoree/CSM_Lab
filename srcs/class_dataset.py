@@ -19,9 +19,11 @@ class ConfigurationsDataset (Dataset) :
 		self.filepaths = filepaths
 		self.transform = transform
 		self.train = train
+		self.cond = cond
 		
 		all_data = []
-		all_cond = []
+		all_conds = []
+
 
 		for filepath in filepaths:
 			cond_value = None
@@ -51,22 +53,22 @@ class ConfigurationsDataset (Dataset) :
 
 			# Create the conditioning array with the same length as data, filled with cond_value
 			current_cond = np.full((len(current_data_portion), 1), cond_value, dtype=np.float32)
-			all_cond.append(current_cond)
+			all_conds.append(current_cond)
 
 		self.data = np.concatenate(all_data, axis=0)
-		self.cond = np.concatenate(all_cond, axis=0)
+		self.conds = np.concatenate(all_conds, axis=0)
 
 		self.data = torch.tensor(self.data, dtype=torch.float32).clone().detach()
-		self.cond = torch.tensor(self.cond, dtype=torch.float32).clone().detach()
+		self.conds = torch.tensor(self.conds, dtype=torch.float32).clone().detach()
 		
-		print(f"Loaded {'train' if self.train else 'test'} data. Final shape: Data={self.data.shape}, Cond={self.cond.shape}")
+		# print(f"Loaded {'train' if self.train else 'test'} data. Final shape: Data={self.data.shape}, Cond={self.conds.shape}")
 
 	def __len__(self):
 		return len(self.data)
 
 	def __getitem__(self, idx):
 		sample = self.data[idx]
-		condition = self.cond[idx]
+		condition = self.conds[idx]
 		if self.transform:
 			sample = self.transform(sample)
 		if self.cond:

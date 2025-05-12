@@ -14,7 +14,7 @@ def rnd_idx (n_live_points, max_idx):
 		if random_idx != max_idx.item():  # Ensure it's not the same as max_idx
 			return random_idx
 
-def nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions):
+def nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps):
 	acceptance = 0  # Initialize acceptance count
 	for _ in range(n_correl_steps):
 		# Generate random perturbations for all configurations in a batch
@@ -26,7 +26,6 @@ def nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions):
 		# Accept configurations where the new energy is less than U_max
 		mask = U_new_x < U_max  # Boolean mask for accepted configurations
 		acceptance += mask.sum().item()  # Count accepted configurations
-
 		
 		U_x[mask] = U_new_x[mask]  # Update energies for accepted configurations
 		x[mask] = x_new[mask]  # Update configurations for accepted configurations
@@ -34,20 +33,21 @@ def nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions):
 	acceptance /= (n_live_points * n_correl_steps)  # Calculate acceptance rate
 	return acceptance  # Return acceptance rate
 
-def plot_saved_configurations (x_conf, conf_steps, U_max_conf):
-	# Directory to save the configuration files
-	output_dir = "./resources/nested_sampling_configs"
-	os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
-
+def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False):
+	
 	for i, conf_step in enumerate(conf_steps):
-		x = x_conf[i]  # Get the configuration at the current step
-		U_max = U_max_conf[i]  # Get the maximum energy for the current configuration
+		if not mixed :
+			x = x_confs[i]  # Get the configuration at the current step
+			U_max = U_max_confs[i]  # Get the maximum energy for the current configuration
+		else :
+			x = x_confs
+			U_max = U_max_confs
 
 		# File name for the current configuration
-		output_file = os.path.join(output_dir, f"conf_step_{int(conf_step)}.dat")
-
+		output_file = output_dir + f"conf_step{int(conf_step)}"
+		
 		# Save the configuration to the file
-		with open(output_file, "w") as f:
+		with open(output_file + ".dat", "w") as f:
 			# Write the step and U_max
 			f.write(f"# Step: {conf_step}\n")
 			f.write(f"# U_max: {U_max.item()}\n")
@@ -59,7 +59,7 @@ def plot_saved_configurations (x_conf, conf_steps, U_max_conf):
 		print(f"Saved configuration for step {conf_step} to {output_file}")
 
 		# Plot the configuration
-		dw.plot_configuration(x_conf=x, conf_step=conf_step, U_max=U_max)  # Plot the configuration 
+		if plot : dw.plot_configuration(output_file, x_conf=x, conf_step=conf_step, U_max=U_max, mixed=mixed)  # Plot the configuration 
 
 if __name__ == "__main__":
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 	#conf_steps = [5e3]
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
 	max_steps = int(max(conf_steps))  # Maximum number of steps
-	x_conf, U_max_conf = [], []
+	x_confs, U_max_confs = [], []
 
 	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 	dx = 0.6
@@ -97,18 +97,19 @@ if __name__ == "__main__":
 		x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
 		U_x[max_idx] = U_x[rnd_i]
 
-		acceptance_ratio = nested_sampling_step(x, U_x, U_max, dx, n_live_points, dimensions) 
+		acceptance_ratio = nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps) 
 		if acceptance_ratio < 0.5 : dx /= 2
 
 		U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 
 		# Save the configuration if the current step is in conf_steps
 		if (i + 1) in conf_steps:
-			U_max_conf.append(U_max)
-			x_conf.append(x.clone())  # Save a copy of the current configuration
+			U_max_confs.append(U_max)
+			x_confs.append(x.clone())  # Save a copy of the current configuration
 
 
 		# Print progress bar
 		print(f"\rStep {i + 1} of {max_steps} ({(i/max_steps)*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx}", end="")
 
-	plot_saved_configurations()
+	output_dir = "./resources/nested_sampling_configs/"
+	save_configurations(x_confs, conf_steps, U_max_confs, output_dir, plot=True)

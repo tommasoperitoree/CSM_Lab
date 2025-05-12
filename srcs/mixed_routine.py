@@ -6,28 +6,171 @@ import matplotlib.pyplot as plt
 
 from class_dataset import ConfigurationsDataset
 from simple_nn import SimpleNN
-from train import train
-from nested_smpl import nested_sampling_step
+from train import train, plot_loss
+from nested_smpl import nested_sampling_step, rnd_idx, save_configurations
 from class_double_well_potential import double_well
+from sampling import sampling
+
 
 if __name__ == "__main__":
 
-	# Define system parameters
-	n_particles = 1  # Number of particles
-	dimensions = 2  # 2D system
-	n_live_points = int(1e4)  # Number of live points in nested sampling
-	n_correl_steps = 5  # Number of correlation steps
-	sampling_factor = int(1e3) # Sampling factor for the dataset (generating n_live_points*sampling_factor)
+	### FLAGS FOR BEHAVIOR ###
+	training_conditioning = True
+	all_live_samples = True
+	extrapolate = False
 
+	n_mixed_routine_steps = 4
+	max_live_samples_for_training = 3
+
+	### Define system parameters
+	n_particles = 1  							# Number of particles
+	dimensions = 2  							# 2D system
+	n_live_points = int(1e4)  					# Number of live points in nested sampling
+
+	n_correl_steps = 5 							# Number of correlation steps
+	n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]			# Number of nested sampling steps
+
+	### Define training parameters
+	smpl_factor = int(1e1) 						# Sampling factor for the dataset
+	sample_num = n_live_points * smpl_factor 	# Number of live points to generate on sample
+	noise_std = 0.5 							# Standard deviation of noise
+	test_fraction = 0.1 
+	batch_size = 128
+	max_epochs = 50
+	diffusion_steps = 50
+	min_beta = 1e-4
+	max_beta = 0.02
+	init_learning_rate = 1e-3
+
+
+	# set device (CUDA, MPS, or CPU)
 	device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+	#print(f"Using {device} device")
 
 	# Instantiate the double-well system
-	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
-
+	dw = double_well(n_particles=n_particles, dimensions=dimensions, device="cpu", eps=3., c=1., d=0.5)
 	# Initialize configurations for nested sampling
 	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
-
 	# Compute energy for all configurations
 	U_x = dw.energy(x)
 
+	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
+	dx = 0.6
+
+	U_max_confs = []
+	x_confs = []
+	routine_steps = []
+	all_generated_filepaths = []
+
+	# preparing output files prefix
+	dir_prefix = "./resources/mixed_routine/"
+	model_dir_prefix = "./trained/mx_"
+	if all_live_samples :
+		dir_add = "als_"
+		if training_conditioning :
+			dir_add += "cond_"
+		else :
+			dir_add += "uncond_"
+	else :
+		dir_add = f"./resources/mixed_routine/lls_"
+		if training_conditioning :
+			dir_add += "cond_"
+		else :
+			dir_add += "uncond_"
+	dir_prefix += dir_add
+	model_dir_prefix += dir_add
 	
+		
+	print(f"\n\n Starting Mixed Routine schedule with : \n\tall_live_samples = {all_live_samples} \n\tconditioning = {training_conditioning} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps}")
+
+	for routine_step in range(n_mixed_routine_steps) :
+
+		print(f"\n ----- Starting step of mixed routine #{routine_step+1} -----")
+
+		### Nested Sampling segment 
+		print("\n__ Nested Sampling segment __")
+		for i in range(int(n_nested_sampl_steps[routine_step])) :
+			rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
+			x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
+			U_x[max_idx] = U_x[rnd_i]
+
+			acceptance_ratio = nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps) 
+			if acceptance_ratio < 0.5 : dx /= 2
+
+			U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
+			
+			# Print progress bar
+			print(f"\rStep {i + 1} of {int(n_nested_sampl_steps[routine_step])} ({(i/n_nested_sampl_steps[routine_step])*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx}", end="")
+
+		print("")
+		routine_steps.append(routine_step+1)
+
+
+		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True)
+
+		### Training segment
+		print("\n__ Training segment __")
+		print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
+		all_generated_filepaths.append(dir_prefix + f"conf_step{int(routine_step+1)}.dat")
+		start_index = 0
+		if not all_live_samples :
+			start_index = max(0, len(all_generated_filepaths) - max_live_samples_for_training)
+		train_data_filepaths = all_generated_filepaths[start_index:]
+
+		train_data  = ConfigurationsDataset(train_data_filepaths, test_fraction, train=True, cond=training_conditioning)
+		test_data = ConfigurationsDataset(train_data_filepaths, test_fraction, train=False, cond=training_conditioning)
+
+		output_model_path = model_dir_prefix + f"conf_step{routine_steps[-1]}.pth"
+
+		loss = train(
+			train_data,
+			test_data,
+			batch_size,
+			device,
+			max_epochs,
+			diffusion_steps,
+			min_beta,
+			max_beta,
+			init_learning_rate,
+			output_model_path,
+		)
+		# Plot and save the loss
+		plot_loss(loss, dir_prefix, int(routine_step+1), mixed=True, all_ls=all_live_samples, cond=training_conditioning)
+
+
+		### Sampling segment
+		print("\n__ Sampling segment __")
+		if training_conditioning:
+			z = torch.randn(diffusion_steps, sample_num, 2)
+			z[0] = 0
+		else :
+			z = torch.randn(diffusion_steps, sample_num, 1)
+
+		sampled_x_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
+		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
+		final_step_samples = sampled_x_trajectory[-1, :, :]
+		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
+
+
+		### Using the model-generated data to progress the sampling algorithm
+		
+		while final_step_samples.shape[0] > 0 : 
+			idx_to_check = torch.randint(0, final_step_samples.shape[0], (1,)).item()
+			new_sample = final_step_samples[idx_to_check]
+			U_new_sample = dw.energy(new_sample)
+
+			if U_new_sample.item() < U_max.item():
+				# print(f"Sample at index {idx_to_check} with energy {U_new_sample.item():.4f} < U_max ({U_max.item():.4f}). Replacing live point.")
+				x[max_idx] = new_sample
+				U_x[max_idx] = U_new_sample
+				U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
+			
+			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0])} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
+
+			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
+
+		print("")
+
+	print("")
+	output_final_conf = dir_prefix + "finalconf"
+	save_configurations(dw, x, [n_mixed_routine_steps+1], U_max, output_final_conf, plot=True, mixed=True)

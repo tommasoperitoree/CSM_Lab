@@ -8,8 +8,8 @@ from simple_nn import SimpleNN
 from class_double_well_potential import double_well
 
 
-def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max):
-	model = SimpleNN()
+def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=0, cond=True):
+	model = SimpleNN(cond=cond)
 	model.load_state_dict(torch.load(model_path, weights_only=True))
 	model.eval()
 	
@@ -19,6 +19,9 @@ def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_m
 			diffusion_steps, min_beta, max_beta
 		)
 		denoised_x = torch.zeros((diffusion_steps, z.shape[1], z.shape[2]))
+		if not cond :
+			denoised_x = torch.zeros((diffusion_steps, z.shape[1]))
+
 		denoised_x[-1] = z[-1]
 		for t in range(diffusion_steps - 1, 0, -1):
 			#if t > 1:
@@ -26,19 +29,33 @@ def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_m
 			#else:
 			#	z = 0
 			ts = torch.full((z.shape[1], 1), t)
-			c = torch.full((z.shape[1], 1), U_max)
-			mu = (
-				1
-				/ torch.sqrt(alpha_ts[t])
-				* (
-					(
-						denoised_x[t]
-						- (1 - alpha_ts[t])
-						/ torch.sqrt(1 - bar_alpha_ts[t])
-						* model.forward(denoised_x[t], ts, c)
+			if cond : 
+				c = torch.full((z.shape[1], 1), U_max)
+				mu = (
+					1
+					/ torch.sqrt(alpha_ts[t])
+					* (
+						(
+							denoised_x[t]
+							- (1 - alpha_ts[t])
+							/ torch.sqrt(1 - bar_alpha_ts[t])
+							* model.forward(denoised_x[t], ts, c)
+						)
 					)
 				)
-			)
+			else :
+				mu = (
+					1
+					/ torch.sqrt(alpha_ts[t])
+					* (
+						(
+							denoised_x[t]
+							- (1 - alpha_ts[t])
+							/ torch.sqrt(1 - bar_alpha_ts[t])
+							* model.forward(denoised_x[t], ts)
+						)
+					)
+				)
 			denoised_x[t - 1] = mu + torch.sqrt(beta_ts[t]) * z[t]
 
 	return denoised_x
@@ -72,9 +89,10 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 
 if __name__ == "__main__":
 
-	smpl_conf = False
+	conditioning = True
 	
-	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
+	conf_steps = [5e3]
+	#conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
 	
 	# Define system parameters
@@ -97,13 +115,13 @@ if __name__ == "__main__":
 	min_beta = 1e-4
 	max_beta = 0.02
 
-	U_max = [3, 0, -3]
+	U_max_list = [3, 0, -3]
 
-	if smpl_conf:
+	if conditioning:
+		z = torch.randn(diffusion_steps, sample_num, 1)
 		for i in range(len(conf_steps)):
 			model_path = f"./trained/diffusion_model_{conf_steps[i]}.pth"
-			U_max = 0 # Conditioning variable (U_max), how should this be defined?
-			denoised_x = sampling(model_path, sample_num, diffusion_steps, min_beta, max_beta, U_max)
+			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
 			save_path = f"./resources/sampling_results/smpl_{conf_steps[i]}.gif"
 			create_sampling_animation(denoised_x, diffusion_steps, save_path)
 
@@ -116,7 +134,7 @@ if __name__ == "__main__":
 			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
 	
 	else:
-		for u in U_max:
+		for u in U_max_list:
 			z = torch.randn(diffusion_steps, sample_num, 2)
 			z[0] = 0
 			model_path = f"./trained/diffusion_model_tot.pth"
