@@ -25,13 +25,14 @@ if __name__ == "__main__":
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(1e4)  					# Number of live points in nested sampling
+	n_live_points = int(1e5)  					# Number of live points in nested sampling
+	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]			# Number of nested sampling steps
+	n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]	# Number of nested sampling steps
 
 	### Define training parameters
-	smpl_factor = int(1e1) 						# Sampling factor for the dataset
+	smpl_factor = int(2) 						# Sampling factor for the dataset
 	sample_num = n_live_points * smpl_factor 	# Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
@@ -105,8 +106,9 @@ if __name__ == "__main__":
 		print("")
 		routine_steps.append(routine_step+1)
 
-
-		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True)
+		# normalization
+		if routine_step == 0 : dw.norm = U_max # first normalization (try normalizing to highest energy of the passed configs)
+		save_configurations(dw, x, [routine_step+1], U_max/dw.norm, dir_prefix, plot=True, mixed=True)
 
 		### Training segment
 		print("\n__ Training segment __")
@@ -120,7 +122,7 @@ if __name__ == "__main__":
 		train_data  = ConfigurationsDataset(train_data_filepaths, test_fraction, train=True, cond=training_conditioning)
 		test_data = ConfigurationsDataset(train_data_filepaths, test_fraction, train=False, cond=training_conditioning)
 
-		output_model_path = model_dir_prefix + f"conf_step{routine_steps[-1]}.pth"
+		output_model_path = model_dir_prefix + f"step{routine_steps[-1]}.pth"
 
 		loss = train(
 			train_data,
@@ -172,5 +174,4 @@ if __name__ == "__main__":
 		print("")
 
 	print("")
-	output_final_conf = dir_prefix + "finalconf"
-	save_configurations(dw, x, -1, U_max, output_final_conf, plot=True, mixed=True)
+	save_configurations(dw, x, -1, U_max, dir_prefix, plot=True, mixed=True)

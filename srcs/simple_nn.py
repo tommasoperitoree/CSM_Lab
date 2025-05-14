@@ -23,7 +23,7 @@ class SimpleNN(nn.Module):
 			nn.Linear(hidden_dim, input_dim),
 		)
 
-	def forward(self, x, t, c=0): 
+	def forward(self, x, t, c=None): 
 		"""
 		Args:
 			x (torch.Tensor): Input tensor of shape (batch_size, input_dim).
@@ -32,7 +32,7 @@ class SimpleNN(nn.Module):
 		"""
 		trgt_device = x.device
 		tensor_data = [x, t.to(trgt_device)]
-		if self.cond:
+		if c is not None :
 			tensor_data.append(c)
 		input_data = torch.hstack(tensor_data)
 		return self.net(input_data)

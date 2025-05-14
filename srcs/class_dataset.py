@@ -27,6 +27,7 @@ class ConfigurationsDataset (Dataset) :
 
 		for filepath in filepaths:
 			cond_value = None
+			# print(f"trying to open {filepath}")
 			with open(filepath, "r") as f:
 				lines = f.readlines()
 

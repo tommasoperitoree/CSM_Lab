@@ -141,7 +141,7 @@ def plot_loss(loss, save_path, conf_step=0, single_plot=False, mixed=False, all_
 	else:
 		title += " for all config steps"
 	
-	save_path += f"lp_conf_step{conf_step}.png"
+	save_path += f"lp_step{conf_step}.png"
 	plt.title(title)
 	#plt.yscale("log")  # Set y-axis to logarithmic scale
 	plt.legend()
@@ -167,32 +167,61 @@ if __name__ == "__main__":
 	min_beta = 1e-4
 	max_beta = 0.02
 	init_learning_rate = 1e-3
-	conditioning = True			# Conditioning on the training
+	test_fraction = 0.1 
+	conditioning = False			
 
 	#conf_steps = [5e3]  # Number of configuration steps
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
-	filepaths = [f"./resources/nested_sampling_configs/conf_step_{step}.dat" for step in conf_steps]
-
-	test_fraction = 0.1 
-	train_data  = ConfigurationsDataset(filepaths, test_fraction, train=True, cond=conditioning)
-	test_data = ConfigurationsDataset(filepaths, test_fraction, train=False, cond=conditioning)
 	
-	output_model_path = f"./trained/diffusion_model_tot.pth"
-	loss_plot_path = f"./resources/loss_plots/lp_tot.png"
-	print(f"\nTraining model for configuration steps {conf_steps}...\n")
-	loss = train(
-		train_data,
-		test_data,
-		batch_size,
-		device,
-		max_epochs,
-		diffusion_steps,
-		min_beta,
-		max_beta,
-		init_learning_rate,
-		output_model_path,
-	)
-	# Plot and save the loss
-	plot_loss(loss, loss_plot_path)
-	print("\n")
+	if conditioning : # Conditioning on the training: model trained on all NS configs, providing their energy levels
+		filepaths = [f"./resources/nested_sampling_configs/pos_step{step}.dat" for step in conf_steps]
+
+		train_data  = ConfigurationsDataset(filepaths, test_fraction, train=True, cond=conditioning)
+		test_data = ConfigurationsDataset(filepaths, test_fraction, train=False, cond=conditioning)
+
+		output_model_path = f"./trained/diffusion_model_tot.pth"
+		loss_plot_path = f"./resources/loss_plots/lp_tot.png"
+		print(f"\nTraining model for configuration steps {conf_steps}...\n")
+		loss = train(
+			train_data,
+			test_data,
+			batch_size,
+			device,
+			max_epochs,
+			diffusion_steps,
+			min_beta,
+			max_beta,
+			init_learning_rate,
+			output_model_path,
+		)
+		# Plot and save the loss
+		plot_loss(loss, loss_plot_path)
+		print("\n")
+	
+	else : # each training done separately
+		print(f"\nTraining model for individual configuration steps {conf_steps}...\n")
+		for step in conf_steps :
+			filepath = [f"./resources/nested_sampling_configs/pos_step{step}.dat"]
+			#print(f"passing filepath {filepath}")
+			train_data  = ConfigurationsDataset(filepath, test_fraction, train=True, cond=conditioning)
+			test_data = ConfigurationsDataset(filepath, test_fraction, train=False, cond=conditioning)
+
+			output_model_path = f"./trained/diffusion_model_step{step}.pth"
+			loss_plot_path = f"./resources/loss_plots/"
+			print(f"\nTraining model for configuration steps {step}...\n")
+			loss = train(
+				train_data,
+				test_data,
+				batch_size,
+				device,
+				max_epochs,
+				diffusion_steps,
+				min_beta,
+				max_beta,
+				init_learning_rate,
+				output_model_path,
+			)
+			# Plot and save the loss
+			plot_loss(loss, loss_plot_path)
+			print("\n")
