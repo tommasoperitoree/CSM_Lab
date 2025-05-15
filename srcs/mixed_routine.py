@@ -15,8 +15,8 @@ from sampling import sampling
 if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
-	training_conditioning = True
-	all_live_samples = True
+	training_conditioning = False
+	all_live_samples = False
 	extrapolate = False
 
 	n_mixed_routine_steps = 4
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 100
+	max_epochs = 50
 	diffusion_steps = 50
 	min_beta = 1e-4
 	max_beta = 0.02
@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
 		sampled_x_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
-		final_step_samples = sampled_x_trajectory[-1, :, :]
+		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
 		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True, sampled=True)
 
@@ -180,4 +180,4 @@ if __name__ == "__main__":
 		print("")
 
 	print("")
-	save_configurations(dw, x, [-1], U_max/dw.norm, dir_prefix, plot=True, mixed=True, normalized_en=True)
+	save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
