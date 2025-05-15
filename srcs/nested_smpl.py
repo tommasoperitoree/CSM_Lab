@@ -49,7 +49,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		if conf_step == -1 :
 			output_file = output_dir + f"pos_final"
 			img_output_file = output_dir + f"img_final"
-			
+
 		# Save the configuration to the file
 		with open(output_file + ".dat", "w") as f:
 			# Write the step and U_max
@@ -63,7 +63,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		print(f"Saved configuration for step {conf_step} to {output_file}")
 
 		# Plot the configuration
-		if plot : dw.plot_configuration(img_output_file, x_conf=x, conf_step=conf_step, U_max=U_max)  # Plot the configuration 
+		if plot : dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max)  # Plot the configuration 
 
 if __name__ == "__main__":
 

@@ -66,8 +66,8 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 	scatter = ax.scatter([], [], alpha=0.1, s=1)
 
 	def init():
-		ax.set_xlim(-3, 3)
-		ax.set_ylim(-3, 3)
+		ax.set_xlim(-5.5, 5.5)
+		ax.set_ylim(-5.5, 5.5)
 		ax.set_xlabel("x")
 		ax.set_ylabel("y")
 		ax.set_title("Sampling")
@@ -98,19 +98,16 @@ if __name__ == "__main__":
 	# Define system parameters
 	n_particles = 1  # Number of particles
 	dimensions = 2  # 2D system
-	n_live_points = int(1e4)  # Number of live points in nested sampling
-	n_correl_steps = 15  # Number of correlation steps
 
 	# Set device (CUDA, MPS, or CPU)
 	# MPS is for Apple Silicon Macs with Metal Performance Shaders support
 	device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 	# print(f"Using {device} device")
 
-
 	# Instantiate the double-well system
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
-	sample_num = 100000
+	sample_num = int(1e5)
 	diffusion_steps = 50
 	min_beta = 1e-4
 	max_beta = 0.02
@@ -127,20 +124,22 @@ if __name__ == "__main__":
 			save_path = f"./resources/sampling_results/smpl_U={u}"
 			create_sampling_animation(denoised_x, diffusion_steps, save_path + ".gif")
 			dw.plot_configuration(
-				save_path, denoised_x[0], U_max=u, sampling=True
+				save_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
 	else :
 		for i in range(len(conf_steps)):
-			model_path = f"./trained/diffusion_model_{conf_steps[i]}.pth"
+			model_path = f"./trained/diffusion_model_step{conf_steps[i]}.pth"
 			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
-			save_path = f"./resources/sampling_results/smpl_{conf_steps[i]}"
-			create_sampling_animation(denoised_x, diffusion_steps, save_path + ".gif")
+			save_path = f"./resources/sampling_results/"
+			anim_path = save_path + f"smpl_anim_step{conf_steps[i]}"
+			img_path = save_path + f"smpl_img_step{conf_steps[i]}"
+			create_sampling_animation(denoised_x, diffusion_steps, anim_path + ".gif")
 
 			U_max = extract_U_max_from_file(f"./resources/nested_sampling_configs/pos_step{conf_steps[i]}.dat")
 
 			dw.plot_configuration(
-				save_path, denoised_x[0], conf_steps[i], U_max, sampling=True
+				img_path, denoised_x[0], U_max=U_max, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
 
 			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")

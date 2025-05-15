@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = False
+	all_live_samples = True
 	extrapolate = False
 
 	n_mixed_routine_steps = 4
@@ -25,11 +25,12 @@ if __name__ == "__main__":
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(1e5)  					# Number of live points in nested sampling
+	n_live_points = int(1e4)  					# Number of live points in nested sampling
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]	# Number of nested sampling steps
+	# n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]	# Number of nested sampling steps
+	n_nested_sampl_steps = [int(5e3/(i+1)) for i in range(n_mixed_routine_steps)]
 
 	### Define training parameters
 	smpl_factor = int(2) 						# Sampling factor for the dataset
@@ -113,7 +114,7 @@ if __name__ == "__main__":
 		### Training segment
 		print("\n__ Training segment __")
 		print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
-		all_generated_filepaths.append(dir_prefix + f"conf_step{int(routine_step+1)}.dat")
+		all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
 		start_index = 0
 		if not all_live_samples :
 			start_index = max(0, len(all_generated_filepaths) - max_live_samples_for_training)
@@ -142,11 +143,8 @@ if __name__ == "__main__":
 
 		### Sampling segment
 		print("\n__ Sampling segment __")
-		if training_conditioning:
-			z = torch.randn(sample_num, dimensions+1)
-			z[0] = 0
-		else :
-			z = torch.randn(sample_num, dimensions)
+		z = torch.randn(diffusion_steps, sample_num, dimensions)
+		z[-1] = 0
 
 		sampled_x_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
