@@ -64,7 +64,7 @@ class double_well(base_system):
 		else:
 			return torch.from_numpy(conf.astype(np.float32)).to(self.device)
 		
-	def plot_configuration (self, output_dir, x_conf, U_max = 0, U_max_cont=True, sampling=False):
+	def plot_configuration (self, output_dir, x_conf, U_max = 0, U_max_cont=True, sampling=False, normalized_en=False):
 		# Define grid for visualization
 		upper_lim, lower_lim = 5.5, -5.5
 		x = np.linspace(lower_lim, upper_lim, 200)
@@ -100,8 +100,11 @@ class double_well(base_system):
 		ax.scatter(cpu_samples[:, 0], cpu_samples[:, 1], s=0.05, zorder=10, alpha=0.8)
 
 		num_contour_levels = 100
-		lower_bound_contour = -5
 		upper_bound_contour = 45
+		lower_bound_contour = -5
+		if normalized_en :
+			upper_bound_contour = 1.3
+			lower_bound_contour = -0.3
 		contour_levels = np.linspace(lower_bound_contour, upper_bound_contour, num_contour_levels)
 
 		norm_greyscale = mcolors.Normalize(vmin=np.min(contour_levels), vmax=np.max(contour_levels))

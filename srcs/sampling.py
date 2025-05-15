@@ -89,7 +89,7 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 
 if __name__ == "__main__":
 
-	conditioning = False
+	conditioning = True
 	
 	#conf_steps = [5e3]
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps

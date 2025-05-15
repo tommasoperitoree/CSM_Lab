@@ -33,7 +33,7 @@ def nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_cor
 	acceptance /= (n_live_points * n_correl_steps)  # Calculate acceptance rate
 	return acceptance  # Return acceptance rate
 
-def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False):
+def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False, normalized_en=False, sampled=False):
 	
 	for i, conf_step in enumerate(conf_steps):
 		if not mixed :
@@ -49,6 +49,9 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		if conf_step == -1 :
 			output_file = output_dir + f"pos_final"
 			img_output_file = output_dir + f"img_final"
+		if sampled :
+			output_file += ".5"
+			img_output_file += ".5"
 
 		# Save the configuration to the file
 		with open(output_file + ".dat", "w") as f:
@@ -63,7 +66,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		print(f"Saved configuration for step {conf_step} to {output_file}")
 
 		# Plot the configuration
-		if plot : dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max)  # Plot the configuration 
+		if plot : dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max, normalized_en=normalized_en)  # Plot the configuration 
 
 if __name__ == "__main__":
 

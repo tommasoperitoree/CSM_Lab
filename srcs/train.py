@@ -168,7 +168,7 @@ if __name__ == "__main__":
 	max_beta = 0.02
 	init_learning_rate = 1e-3
 	test_fraction = 0.1 
-	conditioning = False			
+	conditioning = True			
 
 	#conf_steps = [5e3]  # Number of configuration steps
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps

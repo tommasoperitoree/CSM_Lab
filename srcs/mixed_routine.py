@@ -38,7 +38,7 @@ if __name__ == "__main__":
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 50
+	max_epochs = 100
 	diffusion_steps = 50
 	min_beta = 1e-4
 	max_beta = 0.02
@@ -66,19 +66,19 @@ if __name__ == "__main__":
 
 	# preparing output files prefix
 	dir_prefix = "./resources/mixed_routine/"
-	model_dir_prefix = "./trained/mx_"
+	model_dir_prefix = "./trained/"
 	if all_live_samples :
-		dir_add = "als_"
+		dir_add = "all_live_samples/"
 		if training_conditioning :
-			dir_add += "cond_"
+			dir_add += "conditioned/"
 		else :
-			dir_add += "uncond_"
+			dir_add += "unconditioned/"
 	else :
-		dir_add = f"lls_"
+		dir_add = f"last_live_samples/"
 		if training_conditioning :
-			dir_add += "cond_"
+			dir_add += "conditioned/"
 		else :
-			dir_add += "uncond_"
+			dir_add += "unconditioned/"
 	dir_prefix += dir_add
 	model_dir_prefix += dir_add
 	
@@ -89,8 +89,10 @@ if __name__ == "__main__":
 
 		print(f"\n ----- Starting step of mixed routine #{routine_step+1} -----")
 
+
 		### Nested Sampling segment 
-		print("\n__ Nested Sampling segment __")
+		print(f"\n__ Nested Sampling segment - routine step #{routine_step+1} __")
+		
 		for i in range(int(n_nested_sampl_steps[routine_step])) :
 			rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
 			x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
@@ -109,10 +111,14 @@ if __name__ == "__main__":
 
 		# normalization
 		if routine_step == 0 : dw.norm = U_max # first normalization (try normalizing to highest energy of the passed configs)
-		save_configurations(dw, x, [routine_step+1], U_max/dw.norm, dir_prefix, plot=True, mixed=True)
+		U_x = dw.energy(x)
+		U_max, max_idx = torch.max(U_x, dim=0)
+		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
+
 
 		### Training segment
-		print("\n__ Training segment __")
+		print(f"\n__ Training segment - routine step #{routine_step+1} __")
+		
 		print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
 		all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
 		start_index = 0
@@ -142,7 +148,7 @@ if __name__ == "__main__":
 
 
 		### Sampling segment
-		print("\n__ Sampling segment __")
+		print(f"\n__ Sampling segment - routine step #{routine_step+1} __")
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
 
@@ -150,6 +156,7 @@ if __name__ == "__main__":
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[-1, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
+		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True, sampled=True)
 
 
 		### Using the model-generated data to progress the sampling algorithm
@@ -168,8 +175,9 @@ if __name__ == "__main__":
 			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0])} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
 
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
+		
 
 		print("")
 
 	print("")
-	save_configurations(dw, x, -1, U_max, dir_prefix, plot=True, mixed=True)
+	save_configurations(dw, x, [-1], U_max/dw.norm, dir_prefix, plot=True, mixed=True, normalized_en=True)
