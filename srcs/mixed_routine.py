@@ -15,17 +15,17 @@ from sampling import sampling
 if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
-	training_conditioning = False
-	all_live_samples = False
+	training_conditioning = True
+	all_live_samples = True
 	extrapolate = False
 
-	n_mixed_routine_steps = 4
+	n_mixed_routine_steps = 5
 	max_live_samples_for_training = 3
 
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(1e4)  					# Number of live points in nested sampling
+	n_live_points = int(1e5)  					# Number of live points in nested sampling
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
@@ -85,6 +85,8 @@ if __name__ == "__main__":
 		
 	print(f"\n\n Starting Mixed Routine schedule with : \n\tall_live_samples = {all_live_samples} \n\tconditioning = {training_conditioning} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps}")
 
+	U_max_progr = []
+
 	for routine_step in range(n_mixed_routine_steps) :
 
 		print(f"\n ----- Starting step of mixed routine #{routine_step+1} -----")
@@ -110,7 +112,11 @@ if __name__ == "__main__":
 		routine_steps.append(routine_step+1)
 
 		# normalization
-		if routine_step == 0 : dw.norm = U_max # first normalization (try normalizing to highest energy of the passed configs)
+		U_max_progr.append(U_max)
+		if routine_step == 0 : 
+			dw.norm = U_max # first normalization (normalizing to highest energy of the passed configs)
+		elif routine_step >= max_live_samples_for_training and not all_live_samples :
+			dw.norm = U_max_progr[routine_step+1 - max_live_samples_for_training] # normalizing to last live samples used
 		U_x = dw.energy(x)
 		U_max, max_idx = torch.max(U_x, dim=0)
 		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
@@ -180,4 +186,9 @@ if __name__ == "__main__":
 		print("")
 
 	print("")
-	save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
+
+	if extrapolate :
+		U_to_sample = U_max * (1 + np.sign(U_max)*0.2) 
+	else : 
+		save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
+

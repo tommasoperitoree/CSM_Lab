@@ -89,7 +89,8 @@ def create_sampling_animation(denoised_x, diffusion_steps, save_path):
 
 if __name__ == "__main__":
 
-	conditioning = True
+	conditioning = False
+	trying_to_break_it = True
 	
 	#conf_steps = [5e3]
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
@@ -116,18 +117,20 @@ if __name__ == "__main__":
 
 	z = torch.randn(diffusion_steps, sample_num, dimensions)
 	z[-1] = 0
-	if conditioning :
+	if conditioning and not trying_to_break_it:
 		for u in U_max_list:
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
 			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, u)
-			save_path = f"./resources/sampling_results/smpl_U={u}"
-			create_sampling_animation(denoised_x, diffusion_steps, save_path + ".gif")
+			save_path = f"./resources/sampling_results/"
+			anim_path = save_path + f"smpl_anim_U={u}"
+			img_path = save_path + f"smpl_img_U={u}"
+			create_sampling_animation(denoised_x, diffusion_steps, anim_path + ".gif")
 			dw.plot_configuration(
-				save_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
+				img_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
-	else :
+	elif not trying_to_break_it :
 		for i in range(len(conf_steps)):
 			model_path = f"./trained/diffusion_model_step{conf_steps[i]}.pth"
 			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
@@ -143,3 +146,17 @@ if __name__ == "__main__":
 			)  # Plot the final configuration
 
 			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
+	elif trying_to_break_it :
+		z = torch.zeros(diffusion_steps, sample_num, dimensions)
+		for u in U_max_list :
+			model_path = f"./trained/diffusion_model_tot.pth"
+			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
+			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, u)
+			save_path = f"./resources/sampling_results/"
+			anim_path = save_path + f"smpl_anim_zeros_U={u}"
+			img_path = save_path + f"smpl_img_zeros_U={u}"
+			create_sampling_animation(denoised_x, diffusion_steps, anim_path + ".gif")
+			dw.plot_configuration(
+				img_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
+			)  # Plot the final configuration
+			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
