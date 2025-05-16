@@ -104,7 +104,7 @@ def train(
 
 		#print('\nEpoch: {}, Test Loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(epoch, test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
 
-		print(f"Epoch {epoch}, l.r.={scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}")
+		print(f"\rEpoch {epoch}, l.r.={scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
 		e_loss.append([train_loss, test_loss])
 
 		if scheduler._last_lr[0] < 1e-6:

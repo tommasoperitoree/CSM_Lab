@@ -101,14 +101,13 @@ class double_well(base_system):
 
 		num_contour_levels = 100
 		upper_bound_contour = 45
-		lower_bound_contour = -5
+		lower_bound_contour = -10
 		if normalized_en :
 			upper_bound_contour = 1.3
 			lower_bound_contour = -0.3
 		contour_levels = np.linspace(lower_bound_contour, upper_bound_contour, num_contour_levels)
 
 		norm_greyscale = mcolors.Normalize(vmin=np.min(contour_levels), vmax=np.max(contour_levels))
-	
 		ax.contour(X, Y, Z_target, levels=contour_levels, cmap="Greys_r", norm=norm_greyscale, linewidths=0.9, alpha=0.2, zorder=0)
 
 		# Highlight specific energy level with a contour

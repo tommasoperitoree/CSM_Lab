@@ -17,9 +17,9 @@ if __name__ == "__main__":
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
 	all_live_samples = True
-	extrapolate = False
+	extrapolate = True
 
-	n_mixed_routine_steps = 5
+	n_mixed_routine_steps = 4
 	max_live_samples_for_training = 3
 
 	### Define system parameters
@@ -29,12 +29,12 @@ if __name__ == "__main__":
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	# n_nested_sampl_steps = [5e3, 2e3, 1e3, 5e2]	# Number of nested sampling steps
-	n_nested_sampl_steps = [int(5e3/(i+1)) for i in range(n_mixed_routine_steps)]
+	n_nested_sampl_steps = [int(4e3/(i+1)) 		# Number of nested sampling steps
+							for i in range(n_mixed_routine_steps)]
 
 	### Define training parameters
-	smpl_factor = int(2) 						# Sampling factor for the dataset
-	sample_num = n_live_points * smpl_factor 	# Number of live points to generate on sample
+	smpl_factor = 1 							# Sampling factor for the dataset
+	sample_num = int(n_live_points*smpl_factor) # Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 	model_dir_prefix += dir_add
 	
 		
-	print(f"\n\n Starting Mixed Routine schedule with : \n\tall_live_samples = {all_live_samples} \n\tconditioning = {training_conditioning} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps}")
+	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps}")
 
 	U_max_progr = []
 
@@ -115,10 +115,12 @@ if __name__ == "__main__":
 		U_max_progr.append(U_max)
 		if routine_step == 0 : 
 			dw.norm = U_max # first normalization (normalizing to highest energy of the passed configs)
-		elif routine_step >= max_live_samples_for_training and not all_live_samples :
-			dw.norm = U_max_progr[routine_step+1 - max_live_samples_for_training] # normalizing to last live samples used
+		# elif routine_step >= max_live_samples_for_training and not all_live_samples :
+		#	dw.norm = U_max_progr[routine_step+1 - max_live_samples_for_training] # normalizing to last live samples used
+		# Recalculate energy with normalization now
 		U_x = dw.energy(x)
 		U_max, max_idx = torch.max(U_x, dim=0)
+
 		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
 
 
@@ -176,19 +178,27 @@ if __name__ == "__main__":
 				# print(f"Sample at index {idx_to_check} with energy {U_new_sample.item():.4f} < U_max ({U_max.item():.4f}). Replacing live point.")
 				x[max_idx] = new_sample
 				U_x[max_idx] = U_new_sample
-				U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 			
+			U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0])} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
 
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
 		
-
-		print("")
+		U_x = dw.energy(x)
+		U_max, max_idx = torch.max(U_x, dim=0)
+		print(f"\nAt the end of step #{routine_step+1}, reached energy of U={U_max}")
 
 	print("")
 
-	if extrapolate :
-		U_to_sample = U_max * (1 + np.sign(U_max)*0.2) 
+	if extrapolate and training_conditioning :
+		U_to_sample = U_max * (1 - np.sign(U_max)*0.1) 
+		print(f"\nTrying to sample from model trained at energy = {U_max}, asking for energy = {U_to_sample}")
+		z = torch.randn(diffusion_steps, sample_num, dimensions)
+		z[-1] = 0
+		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=U_to_sample, cond=training_conditioning)
+		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
+		save_configurations(dw, extrapolated_sample, [-2], U_to_sample, dir_prefix, plot=True, mixed=True, normalized_en=True)
 	else : 
+		if extrapolate :
+			print("\nCareful, no extrapolation possible without conditioned training")
 		save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
-

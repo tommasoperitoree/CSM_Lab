@@ -49,6 +49,9 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		if conf_step == -1 :
 			output_file = output_dir + f"pos_final"
 			img_output_file = output_dir + f"img_final"
+		elif conf_step == -2 :
+			output_file = output_dir + f"pos_extrapolated"
+			img_output_file = output_dir + f"img_extrapolated"
 		if sampled :
 			output_file += ".5"
 			img_output_file += ".5"
@@ -66,7 +69,8 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		print(f"Saved configuration for step {conf_step} to {output_file}")
 
 		# Plot the configuration
-		if plot : dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max, normalized_en=normalized_en)  # Plot the configuration 
+		if plot : 
+			dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max, normalized_en=normalized_en)  # Plot the configuration 
 
 if __name__ == "__main__":
 
