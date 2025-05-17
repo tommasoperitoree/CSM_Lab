@@ -16,10 +16,12 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = True
+	all_live_samples = False
 	extrapolate = True
+	
+	if not training_conditioning : extrapolate = False
 
-	n_mixed_routine_steps = 4
+	n_mixed_routine_steps = 6
 	max_live_samples_for_training = 3
 
 	### Define system parameters
@@ -83,7 +85,7 @@ if __name__ == "__main__":
 	model_dir_prefix += dir_add
 	
 		
-	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps}")
+	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps} \n\textrapolate = {extrapolate}")
 
 	U_max_progr = []
 
