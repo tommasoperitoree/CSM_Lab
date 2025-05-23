@@ -188,6 +188,7 @@ if __name__ == "__main__":
 		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=norm_U_to_sample, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
 		save_configurations(dw, extrapolated_sample, [-2], U_to_sample.clone().detach(), dir_prefix, plot=True, mixed=True)
+	
 	else : 
 		if extrapolate :
 			print("\nCareful, no extrapolation possible without conditioned training")
