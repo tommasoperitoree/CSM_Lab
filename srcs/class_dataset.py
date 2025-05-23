@@ -1,68 +1,73 @@
 import torch
 import numpy as np
 
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
+from torch.utils.data import Dataset
 
-
-# Custom dataset class for configurations
-class ConfigurationsDataset (Dataset) :
+class ConfigurationsDataset(Dataset):
 	"""
-	A custom dataset class for loading configurations from a file.
+	A custom dataset class for loading configurations from multiple files, 
+	normalizing their conditioning energy values, and preparing training/test splits.
+
 	Args:
-		filepath (str): Path to the file containing configurations.
+		filepaths (list): List of file paths to load data from.
 		testfraction (float): Fraction of data to be used for testing.
 		train (bool): If True, load training data; if False, load testing data.
-		transform (callable, optional): Optional transform to be applied on a sample.
+		cond (bool): If True, return conditioning values along with samples.
+		transform (callable, optional): Optional transform to apply to samples.
 	"""
 	def __init__(self, filepaths, testfraction, train=True, cond=True, transform=None):
 		self.filepaths = filepaths
 		self.transform = transform
 		self.train = train
 		self.cond = cond
-		
+
 		all_data = []
 		all_conds = []
+		unnormalized_conds = []
 
-
+		# First pass: collect all unnormalized conditioning values
+		file_cond_map = {}
 		for filepath in filepaths:
-			cond_value = None
-			# print(f"trying to open {filepath}")
+			with open(filepath, "r") as f:
+				for line in f:
+					if line.startswith("# U_max:"):
+						cond_value = float(line.split(":")[1].strip())
+						unnormalized_conds.append(cond_value)
+						file_cond_map[filepath] = cond_value
+						break
+
+		# Normalize the conditioning values to [0, 1]
+		cond_min = min(unnormalized_conds)
+		cond_max = max(unnormalized_conds)
+		self.cond_min = cond_min
+		self.cond_max = cond_max
+		if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min}, cond_max (worst energy): {cond_max}")
+		cond_range = cond_max - cond_min
+
+		def normalize(u):
+			return (u - cond_min) / cond_range if cond_range != 0 else 0.0
+
+		# Second pass: load data and assign normalized conditions
+		for filepath in filepaths:
+			norm_cond_value = normalize(file_cond_map[filepath])
 			with open(filepath, "r") as f:
 				lines = f.readlines()
 
-				for line in lines:
-					if line.startswith("# U_max:"):
-						cond_value = float(line.split(":")[1].strip())
-						break 
+			# Find where the data starts
+			data_start_idx = next(i for i, line in enumerate(lines) if not line.startswith("#"))
+			data = np.loadtxt(lines[data_start_idx:])
 
-				# Extract the tensor x from the file
-				# Find the start of the data section, skipping header lines
-				data_start_idx = 0
-				for i, line in enumerate(lines):
-					if not line.startswith("#"):
-						data_start_idx = i
-						break
-					
-				data = np.loadtxt(lines[data_start_idx:])
-				# print(f"Data shape: {data.shape}")
-
-			# Split the data into training and testing sets
-			split_idx = int((1-testfraction) * len(data))
+			# Train/test split
+			split_idx = int((1 - testfraction) * len(data))
 			current_data_portion = data[:split_idx] if self.train else data[split_idx:]
-			all_data.append(current_data_portion) 
+			all_data.append(current_data_portion)
 
-			# Create the conditioning array with the same length as data, filled with cond_value
-			current_cond = np.full((len(current_data_portion), 1), cond_value, dtype=np.float32)
+			# Create the normalized condition array
+			current_cond = np.full((len(current_data_portion), 1), norm_cond_value, dtype=np.float32)
 			all_conds.append(current_cond)
 
-		self.data = np.concatenate(all_data, axis=0)
-		self.conds = np.concatenate(all_conds, axis=0)
-
-		self.data = torch.tensor(self.data, dtype=torch.float32).clone().detach()
-		self.conds = torch.tensor(self.conds, dtype=torch.float32).clone().detach()
-		
-		# print(f"Loaded {'train' if self.train else 'test'} data. Final shape: Data={self.data.shape}, Cond={self.conds.shape}")
+		self.data = torch.tensor(np.concatenate(all_data, axis=0), dtype=torch.float32).clone().detach()
+		self.conds = torch.tensor(np.concatenate(all_conds, axis=0), dtype=torch.float32).clone().detach()
 
 	def __len__(self):
 		return len(self.data)
@@ -72,10 +77,10 @@ class ConfigurationsDataset (Dataset) :
 		condition = self.conds[idx]
 		if self.transform:
 			sample = self.transform(sample)
-		if self.cond:
-			return sample, condition
-		else:
-			return sample
+		return (sample, condition) if self.cond else sample
+
+	def denormalize(self, u_norm, new_cond_min):
+	    return u_norm * (self.cond_max - new_cond_min) + new_cond_min
 	
 # OLD functions implemented in the class
 

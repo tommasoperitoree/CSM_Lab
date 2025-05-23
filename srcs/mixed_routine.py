@@ -1,11 +1,7 @@
 import torch
-import torch.nn as nn
-import os
-import numpy as np
-import matplotlib.pyplot as plt
+import numpy
 
 from class_dataset import ConfigurationsDataset
-from simple_nn import SimpleNN
 from train import train, plot_loss
 from nested_smpl import nested_sampling_step, rnd_idx, save_configurations
 from class_double_well_potential import double_well
@@ -18,7 +14,7 @@ if __name__ == "__main__":
 	training_conditioning = True
 	all_live_samples = False
 	extrapolate = True
-	
+
 	if not training_conditioning : extrapolate = False
 
 	n_mixed_routine_steps = 6
@@ -27,7 +23,7 @@ if __name__ == "__main__":
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(1e5)  					# Number of live points in nested sampling
+	n_live_points = int(1e4)  					# Number of live points in nested sampling
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
@@ -35,13 +31,13 @@ if __name__ == "__main__":
 							for i in range(n_mixed_routine_steps)]
 
 	### Define training parameters
-	smpl_factor = 1 							# Sampling factor for the dataset
+	smpl_factor = 2 							# Sampling factor for the dataset
 	sample_num = int(n_live_points*smpl_factor) # Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
 	max_epochs = 50
-	diffusion_steps = 50
+	diffusion_steps = 500
 	min_beta = 1e-4
 	max_beta = 0.02
 	init_learning_rate = 1e-3
@@ -61,8 +57,6 @@ if __name__ == "__main__":
 	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 	dx = 0.6
 
-	U_max_confs = []
-	x_confs = []
 	routine_steps = []
 	all_generated_filepaths = []
 
@@ -87,7 +81,7 @@ if __name__ == "__main__":
 		
 	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps} \n\textrapolate = {extrapolate}")
 
-	U_max_progr = []
+	start_index = 0
 
 	for routine_step in range(n_mixed_routine_steps) :
 
@@ -113,17 +107,7 @@ if __name__ == "__main__":
 		print("")
 		routine_steps.append(routine_step+1)
 
-		# normalization
-		U_max_progr.append(U_max)
-		if routine_step == 0 : 
-			dw.norm = U_max # first normalization (normalizing to highest energy of the passed configs)
-		# elif routine_step >= max_live_samples_for_training and not all_live_samples :
-		#	dw.norm = U_max_progr[routine_step+1 - max_live_samples_for_training] # normalizing to last live samples used
-		# Recalculate energy with normalization now
-		U_x = dw.energy(x)
-		U_max, max_idx = torch.max(U_x, dim=0)
-
-		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
+		save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True)
 
 
 		### Training segment
@@ -131,7 +115,7 @@ if __name__ == "__main__":
 		
 		print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
 		all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
-		start_index = 0
+
 		if not all_live_samples :
 			start_index = max(0, len(all_generated_filepaths) - max_live_samples_for_training)
 		train_data_filepaths = all_generated_filepaths[start_index:]
@@ -166,7 +150,7 @@ if __name__ == "__main__":
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
-		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True, sampled=True)
+		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
 
 
 		### Using the model-generated data to progress the sampling algorithm
@@ -193,14 +177,18 @@ if __name__ == "__main__":
 	print("")
 
 	if extrapolate and training_conditioning :
-		U_to_sample = U_max * (1 - np.sign(U_max)*0.1) 
+		norm_U_to_sample = -0.1
+		U_to_sample = train_data.denormalize(norm_U_to_sample, new_cond_min=U_max)
+		print(f"[Extrapolation] norm_U_to_sample: {norm_U_to_sample}")
+		print(f"[Extrapolation] U_to_sample (target energy): {U_to_sample}")
+		print(f"[Extrapolation] Model trained up to energy: {U_max}")
 		print(f"\nTrying to sample from model trained at energy = {U_max}, asking for energy = {U_to_sample}")
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
-		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=U_to_sample, cond=training_conditioning)
+		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=norm_U_to_sample, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
-		save_configurations(dw, extrapolated_sample, [-2], U_to_sample, dir_prefix, plot=True, mixed=True, normalized_en=True)
+		save_configurations(dw, extrapolated_sample, [-2], U_to_sample.clone().detach(), dir_prefix, plot=True, mixed=True)
 	else : 
 		if extrapolate :
 			print("\nCareful, no extrapolation possible without conditioned training")
-		save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True, normalized_en=True)
+		save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True)

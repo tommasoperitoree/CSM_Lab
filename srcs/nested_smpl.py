@@ -33,7 +33,7 @@ def nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_cor
 	acceptance /= (n_live_points * n_correl_steps)  # Calculate acceptance rate
 	return acceptance  # Return acceptance rate
 
-def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False, normalized_en=False, sampled=False):
+def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False, sampled=False):
 	
 	for i, conf_step in enumerate(conf_steps):
 		if not mixed :
@@ -70,7 +70,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 
 		# Plot the configuration
 		if plot : 
-			dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max, normalized_en=normalized_en)  # Plot the configuration 
+			dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max)  # Plot the configuration 
 
 if __name__ == "__main__":
 

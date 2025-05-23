@@ -29,7 +29,6 @@ class double_well(base_system):
 		self.eps = eps  # Energy scaling factor
 		self.c = c  	# Strength of double-well potential
 		self.d = d  	# Linear term coefficient
-		self.norm = 1.	# normalization
 
 		# Normalization - deprecated: only needed for diffusion model
 		# conf = self.init_conf(n_points=int(1e4))
@@ -38,13 +37,11 @@ class double_well(base_system):
 		# self.eps = 1/e_max  # Normalize energy to 1
 
 	# Define the energy function
-	def energy(self, x, normalize=True):
+	def energy(self, x):
 		if len(x.shape) < 2:  # Single configuration
 			energy = self.eps*(self.c * (x[0]**2 - 1)**2 + (x[0] - x[1])**2 + self.d * (x[0] + x[1]))
 		elif len(x.shape) == 2:  # Batch of configurations
 			energy = self.eps*(self.c * (x[:, 0]**2 - 1)**2 + (x[:, 0] - x[:, 1])**2 + self.d * (x[:, 0] + x[:, 1]))
-		if normalize:
-			energy /= self.norm
 		return energy
 
 	# Initialize random configuration within given bounds
@@ -64,7 +61,7 @@ class double_well(base_system):
 		else:
 			return torch.from_numpy(conf.astype(np.float32)).to(self.device)
 		
-	def plot_configuration (self, output_dir, x_conf, U_max = 0, U_max_cont=True, sampling=False, normalized_en=False):
+	def plot_configuration (self, output_dir, x_conf, U_max = 0, U_max_cont=True, sampling=False):
 		# Define grid for visualization
 		upper_lim, lower_lim = 5.5, -5.5
 		x = np.linspace(lower_lim, upper_lim, 200)
@@ -102,9 +99,7 @@ class double_well(base_system):
 		num_contour_levels = 100
 		upper_bound_contour = 45
 		lower_bound_contour = -10
-		if normalized_en :
-			upper_bound_contour = 1.3
-			lower_bound_contour = -0.3
+		
 		contour_levels = np.linspace(lower_bound_contour, upper_bound_contour, num_contour_levels)
 
 		norm_greyscale = mcolors.Normalize(vmin=np.min(contour_levels), vmax=np.max(contour_levels))
