@@ -60,7 +60,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 		with open(output_file + ".dat", "w") as f:
 			# Write the step and U_max
 			f.write(f"# Step: {conf_step}\n")
-			f.write(f"# U_max: {U_max.item()}\n")
+			f.write(f"# U_max: {U_max.item() if torch.is_tensor(U_max) else U_max}\n")
 
 			# Write the tensor x
 			f.write("# x (configurations):\n")

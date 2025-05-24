@@ -110,9 +110,12 @@ class double_well(base_system):
 			U_max_val =	U_max.cpu().numpy().item()
 		else:
 			U_max_val = U_max
-		
-		if U_max_cont:
-			ax.contour(X, Y, Z_target, levels=[U_max_val], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=12)
+		#print(f"[DEBUG] Drawing highlight contour at U_max_val = {U_max_val}")
+		#print(f"[DEBUG] Z_target min: {np.min(Z_target)}, max: {np.max(Z_target)}")
+		#print(f"[DEBUG] Attempting to draw contour at U_max_val = {U_max_val}")
+		#print(f"[DEBUG] Contour levels: {contour_levels[0]} to {contour_levels[-1]}")
+		#print(f"[DEBUG] Is U_max_val within Z_target? {np.min(Z_target) <= U_max_val <= np.max(Z_target)}")
+		ax.contour(X, Y, Z_target, levels=[U_max_val], colors="C1", alpha=1, linewidths=1.5, linestyles='-', zorder=15)
 
 		# Display the plot
 		plt.savefig(output_dir + ".png", dpi=300, bbox_inches='tight')

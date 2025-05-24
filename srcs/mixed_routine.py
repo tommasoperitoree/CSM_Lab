@@ -12,31 +12,31 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = False
+	all_live_samples = True
 	extrapolate = True
 
 	if not training_conditioning : extrapolate = False
 
-	n_mixed_routine_steps = 6
+	n_mixed_routine_steps = 5
 	max_live_samples_for_training = 3
 
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(1e4)  					# Number of live points in nested sampling
+	n_live_points = int(5e4)  					# Number of live points in nested sampling
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [int(4e3/(i+1)) 		# Number of nested sampling steps
+	n_nested_sampl_steps = [int(5e3/(i+1)) 		# Number of nested sampling steps
 							for i in range(n_mixed_routine_steps)]
 
 	### Define training parameters
-	smpl_factor = 2 							# Sampling factor for the dataset
+	smpl_factor = 1								# Sampling factor for the dataset
 	sample_num = int(n_live_points*smpl_factor) # Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 50
+	max_epochs = 60
 	diffusion_steps = 500
 	min_beta = 1e-4
 	max_beta = 0.02
@@ -187,9 +187,10 @@ if __name__ == "__main__":
 		z[-1] = 0
 		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=norm_U_to_sample, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
-		save_configurations(dw, extrapolated_sample, [-2], U_to_sample.clone().detach(), dir_prefix, plot=True, mixed=True)
+		print(f"[DEBUG] U_max: {U_to_sample}, type: {type(U_to_sample)}")	
+		save_configurations(dw, extrapolated_sample, [-2], U_to_sample.item(), dir_prefix, plot=True, mixed=True)
 	
 	else : 
 		if extrapolate :
 			print("\nCareful, no extrapolation possible without conditioned training")
-		save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True)
+		else : save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True)

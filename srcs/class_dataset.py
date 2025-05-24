@@ -41,7 +41,7 @@ class ConfigurationsDataset(Dataset):
 		cond_max = max(unnormalized_conds)
 		self.cond_min = cond_min
 		self.cond_max = cond_max
-		if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min}, cond_max (worst energy): {cond_max}")
+		if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min:.4f}, cond_max (worst energy): {cond_max:.4f}")
 		cond_range = cond_max - cond_min
 
 		def normalize(u):

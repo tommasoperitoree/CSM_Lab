@@ -111,7 +111,7 @@ def train(
 			print("\nReached learning rate threshold, stopping training @ epoch ", epoch)
 			break
 	
-	print("Finished training!!")
+	print("Finished training!!\n")
 	torch.save(model.state_dict(), output_model_path)
 	print("Saved model: ", output_model_path)
 
