@@ -36,11 +36,11 @@ if __name__ == "__main__":
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 60
-	diffusion_steps = 500
+	max_epochs = 200
+	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
-	init_learning_rate = 1e-3
+	learning_rate = 1e-3
 
 
 	# set device (CUDA, MPS, or CPU)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 			diffusion_steps,
 			min_beta,
 			max_beta,
-			init_learning_rate,
+			learning_rate,
 			output_model_path,
 		)
 		# Plot and save the loss
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
 
-		sampled_x_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
+		sampled_x_trajectory, displacements = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 	print("")
 
 	if extrapolate and training_conditioning :
-		norm_U_to_sample = -0.1
+		norm_U_to_sample = [-0.1, -0.5, -1.]
 		U_to_sample = train_data.denormalize(norm_U_to_sample, new_cond_min=U_max)
 		print(f"[Extrapolation] norm_U_to_sample: {norm_U_to_sample}")
 		print(f"[Extrapolation] U_to_sample (target energy): {U_to_sample}")
@@ -185,7 +185,7 @@ if __name__ == "__main__":
 		print(f"\nTrying to sample from model trained at energy = {U_max}, asking for energy = {U_to_sample}")
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
-		sampled_extrapolated_trajectory = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=norm_U_to_sample, cond=training_conditioning)
+		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=norm_U_to_sample, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
 		print(f"[DEBUG] U_max: {U_to_sample}, type: {type(U_to_sample)}")	
 		save_configurations(dw, extrapolated_sample, [-2], U_to_sample.item(), dir_prefix, plot=True, mixed=True)

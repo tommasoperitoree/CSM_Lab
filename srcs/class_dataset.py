@@ -41,7 +41,7 @@ class ConfigurationsDataset(Dataset):
 		cond_max = max(unnormalized_conds)
 		self.cond_min = cond_min
 		self.cond_max = cond_max
-		if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min:.4f}, cond_max (worst energy): {cond_max:.4f}")
+		# if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min:.4f}, cond_max (worst energy): {cond_max:.4f}")
 		cond_range = cond_max - cond_min
 
 		def normalize(u):
@@ -108,3 +108,6 @@ def extract_U_max_from_file(filepath):
 	
 	# Raise an error if '# U_max:' is not found
 	raise ValueError(f"U_max not found in file: {filepath}")
+
+def denormalize(max_u, min_u, u) :
+	return u * (max_u-min_u) + min_u

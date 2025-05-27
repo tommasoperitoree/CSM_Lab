@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from forward_process import calculate_data_at_certain_time, calculate_parameters
 from class_dataset import ConfigurationsDataset
 from simple_nn import SimpleNN
+from diffusers.optimization import get_cosine_schedule_with_warmup
+from transformers import get_constant_schedule_with_warmup
 
 
 def train(
@@ -18,7 +20,8 @@ def train(
 	diffusion_steps,
 	min_beta,
 	max_beta,
-	init_learning_rate,
+	learning_rate,
+	lr_warmup_steps,
 	output_model_path,
 ):
 
@@ -26,9 +29,19 @@ def train(
 	test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
 	model = SimpleNN(cond=train_data.cond).to(device)
-	optimizer = torch.optim.Adam(model.parameters(), lr=init_learning_rate)
+	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 	#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, threshold=1e-3, threshold_mode='rel', cooldown=0, min_lr=1e-9, eps=1e-10)
-	scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1)
+	num_training_steps = len(train_loader) * max_epochs
+	lr_warmup_steps = max(20, int(0.05 * num_training_steps))
+	lr_scheduler = get_cosine_schedule_with_warmup(
+    	optimizer=optimizer,
+    	num_warmup_steps=lr_warmup_steps,
+    	num_training_steps=num_training_steps,
+	)
+	# lr_scheduler = get_constant_schedule_with_warmup(
+    # 	optimizer=optimizer,
+    # 	num_warmup_steps=lr_warmup_steps
+	# )
 	loss_fn = nn.MSELoss()
 	beta_ts, alpha_ts, bar_alpha_ts = calculate_parameters(
 		diffusion_steps, min_beta, max_beta
@@ -59,6 +72,7 @@ def train(
 			noised_x_t, eps = calculate_data_at_certain_time(
 				x, bar_alpha_ts, random_time_step
 			)
+			
 			eps = eps.to(device)
 			if train_data.cond:
 				predicted_eps = model.forward(noised_x_t, random_time_step, c)
@@ -69,6 +83,7 @@ def train(
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
+			lr_scheduler.step()			
 			train_loss += loss.item()
 
 		train_loss /=  len(train_loader) # Calculate average train loss
@@ -104,12 +119,12 @@ def train(
 
 		#print('\nEpoch: {}, Test Loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(epoch, test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
 
-		print(f"\rEpoch {epoch}, l.r.={scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
+		print(f"\rEpoch {epoch}, l.r.={lr_scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
 		e_loss.append([train_loss, test_loss])
 
-		if scheduler._last_lr[0] < 1e-6:
-			print("\nReached learning rate threshold, stopping training @ epoch ", epoch)
-			break
+		#if lr_scheduler._last_lr[0] < 1e-6:
+		#	print("\nReached learning rate threshold, stopping training @ epoch ", epoch)
+		#	break
 	
 	print("Finished training!!\n")
 	torch.save(model.state_dict(), output_model_path)
@@ -118,7 +133,7 @@ def train(
 	return e_loss
 
 
-def plot_loss(loss, save_path, conf_step=0, single_plot=False, mixed=False, all_ls=True, cond=True):
+def plot_loss(loss, save_path, conf_step=0, single_plot=False):
 	"""
 	Plot and save the train and test loss over epochs.
 
@@ -145,7 +160,7 @@ def plot_loss(loss, save_path, conf_step=0, single_plot=False, mixed=False, all_
 	plt.title(title)
 	#plt.yscale("log")  # Set y-axis to logarithmic scale
 	plt.legend()
-	#plt.ylim(0, 1)
+	plt.ylim(-0.2, 2)
 	plt.grid(True)
 	plt.savefig(save_path)
 	plt.close()
@@ -163,12 +178,13 @@ if __name__ == "__main__":
 	noise_std = 0.5
 	batch_size = 128
 	max_epochs = 300
-	diffusion_steps = 50
+	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
-	init_learning_rate = 1e-3
+	learning_rate = 1e-3
+	lr_warmup_steps = 10
 	test_fraction = 0.1 
-	conditioning = True			
+	conditioning = False			
 
 	#conf_steps = [5e3]  # Number of configuration steps
 	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
@@ -192,7 +208,8 @@ if __name__ == "__main__":
 			diffusion_steps,
 			min_beta,
 			max_beta,
-			init_learning_rate,
+			learning_rate,
+			lr_warmup_steps,
 			output_model_path,
 		)
 		# Plot and save the loss
@@ -219,9 +236,10 @@ if __name__ == "__main__":
 				diffusion_steps,
 				min_beta,
 				max_beta,
-				init_learning_rate,
+				learning_rate,
+				lr_warmup_steps,
 				output_model_path,
 			)
 			# Plot and save the loss
-			plot_loss(loss, loss_plot_path)
+			plot_loss(loss, loss_plot_path, conf_step=step)
 			print("\n")
