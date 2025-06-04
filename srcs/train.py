@@ -21,7 +21,6 @@ def train(
 	min_beta,
 	max_beta,
 	learning_rate,
-	lr_warmup_steps,
 	output_model_path,
 ):
 
@@ -164,7 +163,7 @@ def plot_loss(loss, save_path, conf_step=0, single_plot=False):
 	plt.grid(True)
 	plt.savefig(save_path)
 	plt.close()
-	print(f"Loss plot saved to {save_path}")
+	# print(f"Loss plot saved to {save_path}")
 
 
 
