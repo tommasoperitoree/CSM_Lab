@@ -23,11 +23,11 @@ if __name__ == "__main__":
 	### Define system parameters
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
-	n_live_points = int(5e4)  					# Number of live points in nested sampling
+	n_live_points = int(2e4)  					# Number of live points in nested sampling
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [int(5e3/(i+1)) 		# Number of nested sampling steps
+	n_nested_sampl_steps = [int(1.5e4/(i+1)) 		# Number of nested sampling steps
 							for i in range(n_mixed_routine_steps)]
 
 	### Define training parameters
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 	# Initialize configurations for nested sampling
 	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
 	# initialize from nested sampling configuration
-	x = extract_configuration_from_file("./resources/nested_sampling_configs/pos_step5000.dat")	# Compute energy for all configurations
+	x = extract_configuration_from_file(f"./resources/nested_sampling_configs/pos_step{n_nested_sampl_steps[0]}.dat")	# Compute energy for all configurations
 	
 	U_x = dw.energy(x)
 	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 			routine_steps.append(routine_step+1)
 
 			save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True)
-
+			all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
 		else : 
 			print("Configuration loaded from default configuration from nested sampling")
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 		### Training segment
 		print(f"\n__ Training segment - routine step #{routine_step+1} __")
 		
-		print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
+		#print("using all samples" if all_live_samples else f"using last {max_live_samples_for_training} samples")
 		all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
 
 		if not all_live_samples :
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
 
-		sampled_x_trajectory, displacements = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max, training_conditioning)
+		sampled_x_trajectory, displacements = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
@@ -181,13 +181,14 @@ if __name__ == "__main__":
 		
 		U_x = dw.energy(x)
 		U_max, max_idx = torch.max(U_x, dim=0)
+		print("")
 
 	print("")
 
 	if extrapolate and training_conditioning :
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
-		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max, training_conditioning)
+		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max, training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
 		save_configurations(dw, extrapolated_sample, [-2], U_max.item(), dir_prefix, plot=True, mixed=True)
 	

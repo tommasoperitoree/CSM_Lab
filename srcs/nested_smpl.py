@@ -77,7 +77,7 @@ if __name__ == "__main__":
 	# Define system parameters
 	n_particles = 1  # Number of particles
 	dimensions = 2  # 2D system
-	n_live_points = int(5e4)  # Number of live points in nested sampling
+	n_live_points = int(2e4)  # Number of live points in nested sampling
 	n_correl_steps = 5  # Number of correlation steps
 
 	# Set device (MPS is for Apple Silicon Macs with Metal Performance Shaders support)
@@ -95,8 +95,8 @@ if __name__ == "__main__":
 	# Compute energy for all configurations
 	U_x = dw.energy(x)  
 
-	#conf_steps = [5e3]
-	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4, 8.6e4]  # Number of configuration steps
+	#conf_steps = [1.5e4]
+	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
 	max_steps = int(max(conf_steps))  # Maximum number of steps
 	x_confs, U_max_confs = [], []
 
@@ -124,3 +124,4 @@ if __name__ == "__main__":
 
 	output_dir = "./resources/nested_sampling_configs/"
 	save_configurations(dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True)
+	print("")

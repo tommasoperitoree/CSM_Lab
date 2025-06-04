@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class SimpleNN(nn.Module):
-	def __init__(self, cond=True, input_dim=2, hidden_dim=64):
+	def __init__(self, input_dim=2, hidden_dim=64, cond=False):
 		super().__init__()
 		input_dim_model = input_dim
 		if cond:

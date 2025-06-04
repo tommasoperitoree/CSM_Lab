@@ -168,7 +168,7 @@ if __name__ == "__main__":
 	U_x = dw.energy(x)  
 
 
-	#conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
+	#conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
 	#max_steps = int(max(conf_steps))  # Maximum number of steps
 	max_steps = 1
 	conf_steps = [max_steps]

@@ -9,7 +9,7 @@ from simple_nn import SimpleNN
 from class_double_well_potential import double_well
 
 
-def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_max=0, cond=True):
+def sampling(model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=False):
 	model = SimpleNN(cond=cond)
 	model.load_state_dict(torch.load(model_path, weights_only=True))
 	model.eval()
@@ -62,7 +62,7 @@ def sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, U_m
 
 	return denoised_x, displacements
 
-def create_sampling_animation(denoised_x, frame_indices, save_path, duration_seconds=5):
+def create_sampling_animation(denoised_x, save_path, duration_seconds=5):
 	
 	fig, ax = plt.subplots(figsize=(6, 6))
 	scatter = ax.scatter([], [], alpha=0.1, s=1)
@@ -145,8 +145,8 @@ if __name__ == "__main__":
 	conditioning = True
 	trying_to_break_it = False
 	
-	#conf_steps = [5e3]
-	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
+	conf_steps = [1.5e4]
+	#conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
 	
 	# Define system parameters

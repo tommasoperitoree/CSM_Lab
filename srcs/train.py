@@ -26,8 +26,9 @@ def train(
 
 	train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 	test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
+	conditioning = train_data.cond
 
-	model = SimpleNN(cond=train_data.cond).to(device)
+	model = SimpleNN(cond=conditioning).to(device)
 	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 	#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, threshold=1e-3, threshold_mode='rel', cooldown=0, min_lr=1e-9, eps=1e-10)
 	num_training_steps = len(train_loader) * max_epochs
@@ -57,12 +58,12 @@ def train(
 		model.train()  # Set the model to training mode
 		train_loss = 0
 
-		for item in train_loader:
-			if train_data.cond:
+		for item in train_loader :
+			if conditioning :
 				x, c = item
 				x = x.to(device)
 				c = c.to(device)
-			else:
+			else :
 				x = item
 				x = x.to(device)
 				c = None
@@ -73,9 +74,9 @@ def train(
 			)
 			
 			eps = eps.to(device)
-			if train_data.cond:
+			if conditioning :
 				predicted_eps = model.forward(noised_x_t, random_time_step, c)
-			else:
+			else :
 				predicted_eps = model.forward(noised_x_t, random_time_step)
 
 			loss = loss_fn(predicted_eps, eps)
@@ -92,13 +93,13 @@ def train(
 		model.eval()  # Set the model to evaluation mode 
 		test_loss = 0
 		
-		with torch.no_grad():  # Disable gradient calculations for efficiency
+		with torch.no_grad() :  # Disable gradient calculations for efficiency
 			for item in test_loader :  # Iterate over test data
-				if test_data.cond:
+				if conditioning :
 					x, c = item
 					x = x.to(device)
 					c = c.to(device)
-				else:
+				else :
 					x = item
 					x = x.to(device)
 					c = None
@@ -107,9 +108,9 @@ def train(
 					x, bar_alpha_ts, random_time_step
 				)
 				eps = eps.to(device)
-				if test_data.cond:
+				if conditioning :
 					predicted_eps = model.forward(noised_x_t, random_time_step, c)
-				else:
+				else :
 					predicted_eps = model.forward(noised_x_t, random_time_step)
 				test_loss += loss_fn(predicted_eps, eps).item()
 
@@ -118,16 +119,16 @@ def train(
 
 		#print('\nEpoch: {}, Test Loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(epoch, test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
 
-		print(f"\rEpoch {epoch}, l.r.={lr_scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
+		print(f"\rEpoch {epoch+1}, l.r.={lr_scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
 		e_loss.append([train_loss, test_loss])
 
 		#if lr_scheduler._last_lr[0] < 1e-6:
 		#	print("\nReached learning rate threshold, stopping training @ epoch ", epoch)
 		#	break
 	
-	print("Finished training!!\n")
+	print("\t -> Finished training!!\n")
 	torch.save(model.state_dict(), output_model_path)
-	print("Saved model: ", output_model_path)
+	# print("Saved model: ", output_model_path)
 
 	return e_loss
 
@@ -185,8 +186,8 @@ if __name__ == "__main__":
 	test_fraction = 0.1 
 	conditioning = False			
 
-	#conf_steps = [5e3]  # Number of configuration steps
-	conf_steps = [5e3, 1e4, 1.6e4, 2.3e4, 3.1e4, 4e4, 5e4, 6.1e4, 7.3e4]  # Number of configuration steps
+	#conf_steps = [1.5e4]
+	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
 	
 	if conditioning : # Conditioning on the training: model trained on all NS configs, providing their energy levels
