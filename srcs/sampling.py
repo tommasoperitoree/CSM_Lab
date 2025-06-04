@@ -62,7 +62,7 @@ def sampling(model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=F
 
 	return denoised_x, displacements
 
-def create_sampling_animation(denoised_x, save_path, duration_seconds=5):
+def create_sampling_animation(denoised_x, save_path, duration_seconds=5.):
 	
 	fig, ax = plt.subplots(figsize=(6, 6))
 	scatter = ax.scatter([], [], alpha=0.1, s=1)
@@ -82,7 +82,7 @@ def create_sampling_animation(denoised_x, save_path, duration_seconds=5):
 		return (scatter,)
 
 	n_frames = len(denoised_x)
-	fps = n_frames / duration_seconds
+	fps = int(n_frames / duration_seconds)
 
 	anim = FuncAnimation(fig, update, frames=n_frames, init_func=init, blit=True)
 	anim.save(save_path, writer="pillow", fps=fps)
@@ -145,8 +145,8 @@ if __name__ == "__main__":
 	conditioning = True
 	trying_to_break_it = False
 	
-	conf_steps = [1.5e4]
-	#conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
+	#conf_steps = [1.5e4]
+	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
 	conf_steps = [int(step) for step in conf_steps]
 	
 	# Define system parameters
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 	# Instantiate the double-well system
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
-	sample_num = int(5e4)
+	sample_num = int(2e4)
 	diffusion_steps = 1000
 	frame_jump = 4
 	min_beta = 1e-4
@@ -179,14 +179,14 @@ if __name__ == "__main__":
 		for u in norm_U_to_sample:
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
-			denoised_x, displacements = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, u)
+			denoised_x, displacements = sampling(model_path, z, diffusion_steps, min_beta, max_beta, u, True)
 			save_path = f"./resources/sampling_results/"
 			anim_path = save_path + f"smpl_anim_u={u}"
 			img_path = save_path + f"smpl_img_u={u}"
 			
 			denoised_x_sub = denoised_x[::frame_jump]
 			frame_indices = list(range(len(denoised_x)))[::frame_jump]  # Original timesteps
-			create_sampling_animation(denoised_x_sub, frame_indices, anim_path + ".gif")
+			create_sampling_animation(denoised_x_sub, anim_path + ".gif")
 
 			U_max = denormalize(max(U_max_list), min(U_max_list), u)
 			dw.plot_configuration(
@@ -199,7 +199,7 @@ if __name__ == "__main__":
 	elif not trying_to_break_it :
 		for i in range(len(conf_steps)):
 			model_path = f"./trained/diffusion_model_step{conf_steps[i]}.pth"
-			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, cond=False)
+			denoised_x = sampling(model_path, z, diffusion_steps, min_beta, max_beta, cond=False)
 			save_path = f"./resources/sampling_results/"
 			anim_path = save_path + f"smpl_anim_step{conf_steps[i]}"
 			img_path = save_path + f"smpl_img_step{conf_steps[i]}"
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 		for u in norm_U_to_sample :
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
-			denoised_x = sampling(model_path, z, sample_num, diffusion_steps, min_beta, max_beta, u)
+			denoised_x = sampling(model_path, z, diffusion_steps, min_beta, max_beta, u, True)
 			save_path = f"./resources/sampling_results/"
 			anim_path = save_path + f"smpl_anim_zeros_U={u}"
 			img_path = save_path + f"smpl_img_zeros_U={u}"

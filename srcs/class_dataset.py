@@ -42,14 +42,11 @@ class ConfigurationsDataset(Dataset):
 		self.cond_min = cond_min
 		self.cond_max = cond_max
 		# if train : print(f"[ConfigurationsDataset] cond_min (best energy): {cond_min:.4f}, cond_max (worst energy): {cond_max:.4f}")
-		cond_range = cond_max - cond_min
-
-		def normalize(u):
-			return (u - cond_min) / cond_range if cond_range != 0 else 0.0
+		self.cond_range = cond_max - cond_min
 
 		# Second pass: load data and assign normalized conditions
 		for filepath in filepaths:
-			norm_cond_value = normalize(file_cond_map[filepath])
+			norm_cond_value = self.normalize(file_cond_map[filepath])
 			with open(filepath, "r") as f:
 				lines = f.readlines()
 
@@ -68,7 +65,7 @@ class ConfigurationsDataset(Dataset):
 
 		self.data = torch.tensor(np.concatenate(all_data, axis=0), dtype=torch.float32).clone().detach()
 		self.conds = torch.tensor(np.concatenate(all_conds, axis=0), dtype=torch.float32).clone().detach()
-
+	
 	def __len__(self):
 		return len(self.data)
 
@@ -78,6 +75,9 @@ class ConfigurationsDataset(Dataset):
 		if self.transform:
 			sample = self.transform(sample)
 		return (sample, condition) if self.cond else sample
+
+	def normalize(self, u):
+		return (u - self.cond_min) / self.cond_range if self.cond_range != 0 else 0.0
 
 	def denormalize(self, u_norm, new_cond_min):
 	    return u_norm * (self.cond_max - new_cond_min) + new_cond_min

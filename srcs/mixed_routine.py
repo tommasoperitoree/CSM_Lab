@@ -11,7 +11,7 @@ from sampling import sampling
 if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
-	training_conditioning = True
+	training_conditioning = False
 	all_live_samples = False
 	extrapolate = True
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
 
-		sampled_x_trajectory, displacements = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, cond=training_conditioning)
+		sampled_x_trajectory, displacements = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 				U_x[max_idx] = U_new_sample
 			
 			U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
-			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0])} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
+			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0]+1)} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
 
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
 		
@@ -188,7 +188,8 @@ if __name__ == "__main__":
 	if extrapolate and training_conditioning :
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
-		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max, training_conditioning)
+		normalized_u = train_data.normalize(U_max)
+		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max=normalized_u, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
 		save_configurations(dw, extrapolated_sample, [-2], U_max.item(), dir_prefix, plot=True, mixed=True)
 	
