@@ -64,7 +64,20 @@ def sampling(model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=F
 
 	return denoised_x, displacements
 
-def create_sampling_animation(denoised_x, save_path, duration_seconds=4., original_steps=None):
+def create_sampling_animation(denoised_x, save_path, duration_seconds=4.0, original_steps=None):
+	target_total_frames = 50  # fixed across all animations
+	fps = int(target_total_frames / duration_seconds)
+
+	# Subsample to fixed frame count
+	t_indices = torch.linspace(0, denoised_x.shape[0] - 1, steps=target_total_frames).long()
+	frames = denoised_x[t_indices]
+
+	# Map frame indices back to diffusion steps
+	if original_steps is None:
+		step_map = t_indices.tolist()
+	else:
+		step_map = torch.linspace(0, original_steps - 1, steps=target_total_frames).long().tolist()
+
 	fig, ax = plt.subplots(figsize=(6, 6))
 	scatter = ax.scatter([], [], alpha=0.1, s=1)
 
@@ -76,22 +89,14 @@ def create_sampling_animation(denoised_x, save_path, duration_seconds=4., origin
 		ax.set_title("Sampling")
 		return (scatter,)
 
-	# Create step map to map coarsened frame index to original diffusion step
-	if original_steps is None:
-		step_map = list(range(denoised_x.shape[0]))
-	else:
-		step_map = torch.linspace(0, original_steps - 1, steps=denoised_x.shape[0]).long().tolist()
-
 	def update(rev_t):
-		t = denoised_x.shape[0] - 1 - rev_t
+		t = frames.shape[0] - 1 - rev_t
 		true_t = step_map[t]
-		scatter.set_offsets(denoised_x[t])
+		scatter.set_offsets(frames[t])
 		ax.set_title(f"Sampling - Step {true_t}/{original_steps}")
 		return (scatter,)
 
-	n_frames = len(denoised_x)
-	fps = round(n_frames / duration_seconds)
-	anim = FuncAnimation(fig, update, frames=n_frames, init_func=init, blit=True)
+	anim = FuncAnimation(fig, update, frames=target_total_frames, init_func=init, blit=True)
 	anim.save(save_path, writer="pillow", fps=fps)
 	plt.close(fig)
 
@@ -104,7 +109,7 @@ def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understep
 		start = seg * segment_size
 		end = (seg + 1) * segment_size if seg < n_understeps - 1 else T
 
-		positions = denoised_x[start:end]
+		positions = denoised_x[1:][start:end]
 		disps = displacements[start:end]
 
 		x_min, x_max = positions[..., 0].min(), positions[..., 0].max()
@@ -115,18 +120,21 @@ def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understep
 
 		pos_flat = positions.reshape(-1, 2)
 		disp_flat = disps.reshape(-1, 2)
-
 		x_idx = ((pos_flat[:, 0] - x_min) / bin_size).long()
 		y_idx = ((pos_flat[:, 1] - y_min) / bin_size).long()
 
+		x_idx = torch.clamp(x_idx, 0, len(x_bins) - 1)
+		y_idx = torch.clamp(y_idx, 0, len(y_bins) - 1)
+		
 		vec_sum = torch.zeros((len(x_bins), len(y_bins), 2))
 		vec_count = torch.zeros((len(x_bins), len(y_bins)))
 
-		for i in range(pos_flat.shape[0]):
-			xi, yi = x_idx[i], y_idx[i]
-			if 0 <= xi < len(x_bins) and 0 <= yi < len(y_bins):
-				vec_sum[xi, yi] += disp_flat[i]
-				vec_count[xi, yi] += 1
+		# checking valid bis
+		valid = (x_idx >= 0) & (x_idx < len(x_bins)) & (y_idx >= 0) & (y_idx < len(y_bins))
+		x_idx, y_idx, disp_flat = x_idx[valid], y_idx[valid], disp_flat[valid]
+		# accumulate bins (vector form)
+		vec_sum.index_put_((x_idx, y_idx), disp_flat, accumulate=True)
+		vec_count.index_put_((x_idx, y_idx), torch.ones_like(x_idx, dtype=vec_count.dtype), accumulate=True)	
 
 		mean_disp = torch.zeros_like(vec_sum)
 		mask = vec_count > 0
@@ -146,18 +154,88 @@ def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understep
 		cbar.set_label("Displacement Magnitude")
 
 		ax.set_xlabel("X")
+		ax.set_xlim(-5.5, 5.5)
+		ax.set_ylim(-5.5, 5.5)
 		ax.set_ylabel("Y")
 		ax.set_title(f"Mean Displacement (Steps {start}–{end})")
 
-		save_path = save_dir + f"_{seg}.png"
+		save_path = save_dir + f"_{seg+1}.png"
 		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 		plt.close(fig)
+
+def histo_comparison (x_original, denoised_x, bin_size, save_path):
+    orig_positions = np.vstack(x_original)
+    den_positions = np.vstack(denoised_x)
+
+    # Set grid boundaries
+    x_min, x_max = -5.5, 5.5
+    y_min, y_max = -5.5, 5.5
+    
+    # Calculate number of bins based on bin_size
+    num_bins_x = int((x_max - x_min) / bin_size)
+    num_bins_y = int((y_max - y_min) / bin_size)
+
+    # Compute 2D histogram for original data
+    H_orig, xedges, yedges = np.histogram2d(
+        orig_positions[:, 0],  # x positions
+        orig_positions[:, 1],  # y positions
+        bins=[num_bins_x, num_bins_y],
+        range=[[x_min, x_max], [y_min, y_max]],
+        density=True
+    )
+    
+    # Compute 2D histogram for denoised data
+    H_den, xedges, yedges = np.histogram2d(
+        den_positions[:, 0],  # x positions
+        den_positions[:, 1],  # y positions
+        bins=[num_bins_x, num_bins_y],
+        range=[[x_min, x_max], [y_min, y_max]],
+        density=True
+    )
+
+    # Calculate bin-by-bin difference (original - denoised)
+    H_diff = H_orig - H_den
+
+    # Create figure with 3 subplots
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=180)
+
+    # Plot 1: Original histogram
+    im1 = axes[0].imshow(H_orig.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+                         vmin=0, vmax=2.5, cmap='hot')
+    axes[0].set_xlabel('x')
+    axes[0].set_ylabel('y')
+    axes[0].set_title('Original')
+    plt.colorbar(im1, ax=axes[0], label='Density')
+
+    # Plot 2: Denoised histogram
+    im2 = axes[1].imshow(H_den.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+                         vmin=0, vmax=2.5, cmap='hot')
+    axes[1].set_xlabel('x')
+    axes[1].set_ylabel('y')
+    axes[1].set_title('Denoised')
+    plt.colorbar(im2, ax=axes[1], label='Density')
+
+    # Plot 3: Difference histogram (Original - Denoised)
+    # Use a diverging colormap for the difference plot
+    vmax_diff = max(abs(H_diff.min()), abs(H_diff.max()))
+    im3 = axes[2].imshow(H_diff.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+                         vmin=-vmax_diff, vmax=vmax_diff, cmap='RdBu_r')
+    axes[2].set_xlabel('x')
+    axes[2].set_ylabel('y')
+    axes[2].set_title('Difference (Orig - Denoised)')
+    plt.colorbar(im3, ax=axes[2], label='Density Difference')
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
 
 
 if __name__ == "__main__":
 
 	conditioning = True
 	zeros = False # test by generating not uniform but all zero distribution
+	save_time = False
 	
 	#conf_steps = [1.5e4]
 	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
@@ -176,9 +254,11 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
 	sample_num = int(2e4)
-	diffusion_steps = 50
+	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
+
+	mean_disp_understeps = 10
 
 	norm_U_to_sample = [0.5, 0.2, 0.01]
 
@@ -187,9 +267,14 @@ if __name__ == "__main__":
 	if conditioning and not zeros:
 		U_max_list = []
 
-		timing_file = f"./resources/sampling_results/conditioning/run_time_smpl_ds{diffusion_steps}.dat"
-		with open(timing_file, "w") as f_time:
-			f_time.write("# U_norm\tSamplingTime_seconds\n")
+		if save_time : 
+			timing_file = f"./resources/sampling_results/conditioning/run_time_smpl_ds{diffusion_steps}.dat"
+			with open(timing_file, "w") as f_time:
+				f_time.write("# U_norm\tSamplingTime_seconds\n")
+
+		metric_file = f"./resources/sampling_results/conditioning/metric_smpl_ds{diffusion_steps}.dat"
+		with open(metric_file, "w") as f_metr:
+			f_metr.write("# U_norm\tAccuracy (% points sampled within U_max)\n")
 
 		print(f"\nSampling total model with diffusion steps : {diffusion_steps}, with conditions {norm_U_to_sample}")
 		for i in range(len(conf_steps)):
@@ -201,9 +286,10 @@ if __name__ == "__main__":
 			start_time = time.time()
 			denoised_x, displacements = sampling(model_path, z, diffusion_steps, min_beta, max_beta, u, True)
 			elapsed_time = time.time() - start_time
-			
-			with open(timing_file, "a") as f_time:
-				f_time.write(f"{u}\t\t\t{elapsed_time:.6f}\n")
+
+			if save_time : 
+				with open(timing_file, "a") as f_time:
+					f_time.write(f"{u}\t\t\t{elapsed_time:.6f}\n")
 			save_path = f"./resources/sampling_results/conditioning/"
 			anim_path = save_path + f"smpl_anim_u={u}_ds{int(diffusion_steps)}"
 			img_path = save_path + f"smpl_img_u={u}_ds{int(diffusion_steps)}"
@@ -215,8 +301,18 @@ if __name__ == "__main__":
 				img_path, denoised_x[0], U_max=U_max, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
-			displ_path = save_path + f"histograms/mean_disp_histo_u={u}_ds{diffusion_steps}"
-			mean_displ_split(denoised_x, displacements, bin_size=0.15, save_dir=displ_path, n_understeps=10)
+	
+			# Mean displacement evolution
+			displ_path = save_path + f"displeacement_evolution/mean_disp_histo_u={u}_ds{diffusion_steps}"
+			mean_displ_split(denoised_x, displacements, bin_size=0.15, save_dir=displ_path, n_understeps=mean_disp_understeps)
+
+			# metric to evaluate accuracy of sampling
+			denoised_fin_u = dw.energy(denoised_x[0])
+			u_mask = denoised_fin_u < U_max
+			u_in_bound = u_mask.sum().item()
+			accuracy = 100 * (u_in_bound / sample_num)
+			with open(metric_file, "a") as f_metr:
+				f_metr.write(f"{u}\t\t\t{accuracy:.2f}%\n")
 
 	elif not zeros :
 		for i in range(len(conf_steps)):
@@ -248,3 +344,5 @@ if __name__ == "__main__":
 				img_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
+
+	print("\n")

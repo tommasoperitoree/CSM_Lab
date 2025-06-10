@@ -1,0 +1,4 @@
+# U_norm	Accuracy (% points sampled within U_max)
+0.5			97.06%
+0.2			96.21%
+0.01		97.19%

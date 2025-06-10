@@ -5,7 +5,7 @@ from class_dataset import ConfigurationsDataset, extract_configuration_from_file
 from train import train, plot_loss
 from nested_smpl import nested_sampling_step, rnd_idx, save_configurations
 from class_double_well_potential import double_well
-from sampling import sampling
+from sampling import sampling, histo_comparison
 
 
 if __name__ == "__main__":
@@ -160,6 +160,11 @@ if __name__ == "__main__":
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
 		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
+
+		# Histogram to visualize accuracy 
+		histo_path = dir_prefix + f"histo_comparison_step{routine_step}"
+		histo_comparison(x, final_step_samples, bin_size=0.2, save_path=histo_path)
+		# Accuracy calculation on output file
 
 
 		### Using the model-generated data to progress the sampling algorithm
