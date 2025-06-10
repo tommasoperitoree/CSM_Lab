@@ -3,6 +3,7 @@ import torch.nn as nn
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from forward_process import calculate_data_at_certain_time, calculate_parameters
 from class_dataset import ConfigurationsDataset
@@ -34,13 +35,13 @@ def train(
 	num_training_steps = len(train_loader) * max_epochs
 	lr_warmup_steps = max(20, int(0.05 * num_training_steps))
 	lr_scheduler = get_cosine_schedule_with_warmup(
-    	optimizer=optimizer,
-    	num_warmup_steps=lr_warmup_steps,
-    	num_training_steps=num_training_steps,
+		optimizer=optimizer,
+		num_warmup_steps=lr_warmup_steps,
+		num_training_steps=num_training_steps,
 	)
 	# lr_scheduler = get_constant_schedule_with_warmup(
-    # 	optimizer=optimizer,
-    # 	num_warmup_steps=lr_warmup_steps
+	# 	optimizer=optimizer,
+	# 	num_warmup_steps=lr_warmup_steps
 	# )
 	loss_fn = nn.MSELoss()
 	beta_ts, alpha_ts, bar_alpha_ts = calculate_parameters(
@@ -51,6 +52,8 @@ def train(
 	bar_alpha_ts = bar_alpha_ts.to(device)
 
 	e_loss = [] # list to store loss values
+	start_time = time.time() # Record start time before the loop
+
 	for epoch in range(max_epochs):
 
 		# training loop
@@ -117,9 +120,24 @@ def train(
 		test_loss /= len(test_loader)  # Calculate average test loss
 		# scheduler.step(test_loss)  # Update learning rate based on train loss
 
+		# --- Timer calculations ---
+		current_time = time.time()
+		elapsed_time = current_time - start_time
+		epochs_done = epoch + 1
+		avg_time_per_epoch = elapsed_time / epochs_done
+		remaining_epochs = max_epochs - epochs_done
+		estimated_remaining_time = avg_time_per_epoch * remaining_epochs
+
+		# Format time for printing
+		elapsed_time_str = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+		estimated_remaining_time_str = time.strftime("%H:%M:%S", time.gmtime(estimated_remaining_time))
+		# --- End Timer calculations ---
+
+
 		#print('\nEpoch: {}, Test Loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(epoch, test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
 
-		print(f"\rEpoch {epoch+1}, l.r.={lr_scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g}", end=" ")
+		print(f"\rEpoch {epochs_done}/{max_epochs}, l.r.={lr_scheduler.get_last_lr()[0]:.5g} | Test_loss={test_loss:.5g}, Train_loss={train_loss:.5g} | Elapsed: {elapsed_time_str}, ETA: {estimated_remaining_time_str}", end=" ")
+
 		e_loss.append([train_loss, test_loss])
 
 		#if lr_scheduler._last_lr[0] < 1e-6:
@@ -172,19 +190,18 @@ if __name__ == "__main__":
 
 	# set device (CUDA, MPS, or CPU)
 	device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-	print(f"Using {device} device")
+	# print(f"Using {device} device")
 
 	# Define system parameters
 	noise_std = 0.5
 	batch_size = 128
-	max_epochs = 300
+	max_epochs = 100
 	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
 	learning_rate = 1e-3
-	lr_warmup_steps = 10
 	test_fraction = 0.1 
-	conditioning = False			
+	conditioning = True			
 
 	#conf_steps = [1.5e4]
 	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]  # Number of configuration steps
@@ -209,7 +226,6 @@ if __name__ == "__main__":
 			min_beta,
 			max_beta,
 			learning_rate,
-			lr_warmup_steps,
 			output_model_path,
 		)
 		# Plot and save the loss
@@ -237,7 +253,6 @@ if __name__ == "__main__":
 				min_beta,
 				max_beta,
 				learning_rate,
-				lr_warmup_steps,
 				output_model_path,
 			)
 			# Plot and save the loss
