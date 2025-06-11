@@ -324,8 +324,10 @@ if __name__ == "__main__":
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
 	
 			# Mean displacement evolution
-			displ_path = save_path + f"displeacement_evolution/mean_disp_histo_u={u}_ds{diffusion_steps}"
-			mean_displ_split(denoised_x, displacements, bin_size=0.15, save_dir=displ_path, n_understeps=mean_disp_understeps)
+			# displ_path = save_path + f"displeacement_evolution/mean_disp_histo_u={u}_ds{diffusion_steps}"
+			# mean_displ_split(denoised_x, displacements, bin_size=0.15, save_dir=displ_path, n_understeps=mean_disp_understeps)
+			# Histo comparison
+			histo_comparison()
 
 			# metric to evaluate accuracy of sampling
 			denoised_fin_u = dw.energy(denoised_x[0])

@@ -163,11 +163,11 @@ if __name__ == "__main__":
 		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
 
 		# Histogram to visualize accuracy 
-		histo_path = dir_prefix + f"histo_comparison_step{routine_step+1}"
-		histo_comparison(x, final_step_samples, bin_size=0.1, save_path=histo_path)
+		# histo_path = dir_prefix + f"histo_comparison_step{routine_step+1}"
+		# histo_comparison(x, final_step_samples, bin_size=0.1, save_path=histo_path)
 		# Mean displacement graphics
-		disp_path = dir_prefix + f"displacement_evolution/disp_ev_step{routine_step+1}"
-		mean_displ_split(sampled_x_trajectory, displacements, bin_size=0.15, save_dir=disp_path, n_understeps=mean_disp_understeps)
+		# disp_path = dir_prefix + f"displacement_evolution/disp_ev_step{routine_step+1}"
+		# mean_displ_split(sampled_x_trajectory, displacements, bin_size=0.15, save_dir=disp_path, n_understeps=mean_disp_understeps)
 		# Accuracy calculation on output file
 
 
