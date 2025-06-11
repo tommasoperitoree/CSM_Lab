@@ -5,14 +5,14 @@ from class_dataset import ConfigurationsDataset, extract_configuration_from_file
 from train import train, plot_loss
 from nested_smpl import nested_sampling_step, rnd_idx, save_configurations
 from class_double_well_potential import double_well
-from sampling import sampling, histo_comparison
+from sampling import sampling, histo_comparison, mean_displ_split
 
 
 if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
-	training_conditioning = False
-	all_live_samples = False
+	training_conditioning = True
+	all_live_samples = True
 	extrapolate = True
 
 	if not training_conditioning : extrapolate = False
@@ -24,6 +24,7 @@ if __name__ == "__main__":
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
 	n_live_points = int(2e4)  					# Number of live points in nested sampling
+	mean_disp_understeps = 25
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
@@ -162,8 +163,11 @@ if __name__ == "__main__":
 		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
 
 		# Histogram to visualize accuracy 
-		histo_path = dir_prefix + f"histo_comparison_step{routine_step}"
-		histo_comparison(x, final_step_samples, bin_size=0.2, save_path=histo_path)
+		histo_path = dir_prefix + f"histo_comparison_step{routine_step+1}"
+		histo_comparison(x, final_step_samples, bin_size=0.1, save_path=histo_path)
+		# Mean displacement graphics
+		disp_path = dir_prefix + f"displacement_evolution/disp_ev_step{routine_step+1}"
+		mean_displ_split(sampled_x_trajectory, displacements, bin_size=0.15, save_dir=disp_path, n_understeps=mean_disp_understeps)
 		# Accuracy calculation on output file
 
 

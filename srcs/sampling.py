@@ -60,7 +60,7 @@ def sampling(model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=F
 					)
 				)
 			denoised_x[t - 1] = mu + torch.sqrt(beta_ts[t]) * z[diffusion_steps-t]
-			displacements = denoised_x[1:] - denoised_x[:-1]  # shape: (diffusion_steps-1, sample_num, dimensions)
+			displacements = denoised_x[:-1] - denoised_x[1:]  # shape: (diffusion_steps-1, sample_num, dimensions)
 
 	return denoised_x, displacements
 
@@ -102,12 +102,26 @@ def create_sampling_animation(denoised_x, save_path, duration_seconds=4.0, origi
 
 def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understeps):
 
-	T = denoised_x.shape[0] - 1
-	segment_size = T // n_understeps
+	T = denoised_x.shape[0] - 1  # Total diffusion steps - 1
+	segment_size = T // n_understeps  # Floor division: how many steps per segment
+	remainder = T % n_understeps  # Remainder steps to add to first segment
 
 	for seg in range(n_understeps):
-		start = seg * segment_size
-		end = (seg + 1) * segment_size if seg < n_understeps - 1 else T
+		if seg == 0:
+			# First segment gets the remainder steps + regular segment size
+			start_reversed = 0
+			end_reversed = segment_size + remainder
+		else:
+			# All other segments get regular segment size
+			start_reversed = remainder + seg * segment_size
+			end_reversed = remainder + (seg + 1) * segment_size
+		
+		# Convert to original indices (counting from the end)
+		start = T - end_reversed
+		end = T - start_reversed
+		
+		# Ensure we don't go below 0
+		start = max(0, start)
 
 		positions = denoised_x[1:][start:end]
 		disps = displacements[start:end]
@@ -157,77 +171,84 @@ def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understep
 		ax.set_xlim(-5.5, 5.5)
 		ax.set_ylim(-5.5, 5.5)
 		ax.set_ylabel("Y")
-		ax.set_title(f"Mean Displacement (Steps {start}–{end})")
+		ax.set_title(f"Mean Displacement - Step {seg+1} (Original steps {T-end_reversed+1}–{T-start_reversed+1})")
 
 		save_path = save_dir + f"_{seg+1}.png"
 		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 		plt.close(fig)
 
 def histo_comparison (x_original, denoised_x, bin_size, save_path):
-    orig_positions = np.vstack(x_original)
-    den_positions = np.vstack(denoised_x)
+	orig_positions = np.vstack(x_original)
+	den_positions = np.vstack(denoised_x)
 
-    # Set grid boundaries
-    x_min, x_max = -5.5, 5.5
-    y_min, y_max = -5.5, 5.5
-    
-    # Calculate number of bins based on bin_size
-    num_bins_x = int((x_max - x_min) / bin_size)
-    num_bins_y = int((y_max - y_min) / bin_size)
+	# Set grid boundaries
+	x_min, x_max = -5.5, 5.5
+	y_min, y_max = -5.5, 5.5
+	
+	# Calculate number of bins based on bin_size
+	num_bins_x = int((x_max - x_min) / bin_size)
+	num_bins_y = int((y_max - y_min) / bin_size)
 
-    # Compute 2D histogram for original data
-    H_orig, xedges, yedges = np.histogram2d(
-        orig_positions[:, 0],  # x positions
-        orig_positions[:, 1],  # y positions
-        bins=[num_bins_x, num_bins_y],
-        range=[[x_min, x_max], [y_min, y_max]],
-        density=True
-    )
-    
-    # Compute 2D histogram for denoised data
-    H_den, xedges, yedges = np.histogram2d(
-        den_positions[:, 0],  # x positions
-        den_positions[:, 1],  # y positions
-        bins=[num_bins_x, num_bins_y],
-        range=[[x_min, x_max], [y_min, y_max]],
-        density=True
-    )
+	# Compute 2D histogram for original data
+	H_orig, xedges, yedges = np.histogram2d(
+		orig_positions[:, 0],  # x positions
+		orig_positions[:, 1],  # y positions
+		bins=[num_bins_x, num_bins_y],
+		range=[[x_min, x_max], [y_min, y_max]],
+		density=True
+	)
+	
+	# Compute 2D histogram for denoised data
+	H_den, xedges, yedges = np.histogram2d(
+		den_positions[:, 0],  # x positions
+		den_positions[:, 1],  # y positions
+		bins=[num_bins_x, num_bins_y],
+		range=[[x_min, x_max], [y_min, y_max]],
+		density=True
+	)
 
-    # Calculate bin-by-bin difference (original - denoised)
-    H_diff = H_orig - H_den
+	# Calculate bin-by-bin difference (original - denoised)
+	H_diff = H_orig - H_den
 
-    # Create figure with 3 subplots
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=180)
+	# Create figure with 3 subplots
+	fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=180)
+ 	
+	# Calculate adaptive color limits
+	vmax_orig = H_orig.max()
+	vmax_den = H_den.max()
+	vmax_both = max(vmax_orig, vmax_den)  # Use same scale for both for comparison
+	
+	#print(f"Original max density: {vmax_orig:.6f}")
+	#print(f"Denoised max density: {vmax_den:.6f}")
+	# Plot 1: Original histogramMa
+	im1 = axes[0].imshow(H_orig.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+						 vmin=0, vmax=vmax_both, cmap='Blues')
+	axes[0].set_xlabel('x')
+	axes[0].set_ylabel('y')
+	axes[0].set_title('Original')
+	plt.colorbar(im1, ax=axes[0], label='Density')
 
-    # Plot 1: Original histogram
-    im1 = axes[0].imshow(H_orig.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-                         vmin=0, vmax=2.5, cmap='hot')
-    axes[0].set_xlabel('x')
-    axes[0].set_ylabel('y')
-    axes[0].set_title('Original')
-    plt.colorbar(im1, ax=axes[0], label='Density')
+	# Plot 2: Denoised histogram
+	im2 = axes[1].imshow(H_den.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+						 vmin=0, vmax=vmax_both, cmap='Blues')
+	axes[1].set_xlabel('x')
+	axes[1].set_ylabel('y')
+	axes[1].set_title('Denoised')
+	plt.colorbar(im2, ax=axes[1], label='Density')
 
-    # Plot 2: Denoised histogram
-    im2 = axes[1].imshow(H_den.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-                         vmin=0, vmax=2.5, cmap='hot')
-    axes[1].set_xlabel('x')
-    axes[1].set_ylabel('y')
-    axes[1].set_title('Denoised')
-    plt.colorbar(im2, ax=axes[1], label='Density')
+	# Plot 3: Difference histogram (Original - Denoised)
+	# Use a diverging colormap for the difference plot
+	vmax_diff = max(abs(H_diff.min()), abs(H_diff.max()))
+	im3 = axes[2].imshow(H_diff.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+						 vmin=-vmax_diff, vmax=vmax_diff, cmap='RdBu_r')
+	axes[2].set_xlabel('x')
+	axes[2].set_ylabel('y')
+	axes[2].set_title('Difference (Orig - Denoised)')
+	plt.colorbar(im3, ax=axes[2], label='Density Difference')
 
-    # Plot 3: Difference histogram (Original - Denoised)
-    # Use a diverging colormap for the difference plot
-    vmax_diff = max(abs(H_diff.min()), abs(H_diff.max()))
-    im3 = axes[2].imshow(H_diff.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-                         vmin=-vmax_diff, vmax=vmax_diff, cmap='RdBu_r')
-    axes[2].set_xlabel('x')
-    axes[2].set_ylabel('y')
-    axes[2].set_title('Difference (Orig - Denoised)')
-    plt.colorbar(im3, ax=axes[2], label='Density Difference')
-
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.close(fig)
+	plt.tight_layout()
+	plt.savefig(save_path, dpi=300, bbox_inches='tight')
+	plt.close(fig)
 
 
 
