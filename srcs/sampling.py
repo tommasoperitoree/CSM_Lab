@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 import time
 
 from forward_process import calculate_parameters
-from class_dataset import extract_U_max_from_file, denormalize
+from class_dataset import extract_U_max_from_file, extract_configuration_from_file
 from simple_nn import SimpleNN
 from class_double_well_potential import double_well
 
@@ -222,7 +222,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 	#print(f"Denoised max density: {vmax_den:.6f}")
 	# Plot 1: Original histogramMa
 	im1 = axes[0].imshow(H_orig.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-						 vmin=0, vmax=vmax_both, cmap='Blues')
+						 vmin=0, vmax=vmax_both, cmap='inferno')
 	axes[0].set_xlabel('x')
 	axes[0].set_ylabel('y')
 	axes[0].set_title('Original')
@@ -230,7 +230,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 
 	# Plot 2: Denoised histogram
 	im2 = axes[1].imshow(H_den.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-						 vmin=0, vmax=vmax_both, cmap='Blues')
+						 vmin=0, vmax=vmax_both, cmap='inferno')
 	axes[1].set_xlabel('x')
 	axes[1].set_ylabel('y')
 	axes[1].set_title('Denoised')
@@ -247,8 +247,101 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 	plt.colorbar(im3, ax=axes[2], label='Density Difference')
 
 	plt.tight_layout()
-	plt.savefig(save_path, dpi=300, bbox_inches='tight')
+	plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
 	plt.close(fig)
+
+def create_histogram_evolution(denoised_x, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None):
+    """
+    Create an animated GIF with a colorbar showing the evolution of the 2D histogram during sampling
+    
+    Parameters:
+    -----------
+    denoised_x : torch.Tensor
+        Tensor of shape (diffusion_steps, sample_num, dimensions) containing all sampling steps
+    save_path : str
+        Path to save the GIF animation
+    bin_size : float
+        Size of histogram bins
+    duration_seconds : float
+        Total duration of the animation in seconds
+    original_steps : int
+        Original number of diffusion steps for labeling
+    """
+    target_total_frames = 50
+    fps = int(target_total_frames / duration_seconds)
+
+    # Subsample to fixed frame count
+    t_indices = torch.linspace(0, denoised_x.shape[0] - 1, steps=target_total_frames).long()
+    frames = denoised_x[t_indices]
+
+    # Map frame indices back to diffusion steps
+    if original_steps is None:
+        step_map = t_indices.tolist()
+    else:
+        step_map = torch.linspace(0, original_steps - 1, steps=target_total_frames).long().tolist()
+
+    # Set grid boundaries
+    x_min, x_max = -5.5, 5.5
+    y_min, y_max = -5.5, 5.5
+    
+    # Calculate number of bins
+    num_bins_x = int((x_max - x_min) / bin_size)
+    num_bins_y = int((y_max - y_min) / bin_size)
+
+    # Pre-compute all histograms
+    all_histograms = []
+    max_density = 0
+    
+    for frame_idx in range(frames.shape[0]):
+        positions = frames[frame_idx].numpy()
+        
+        H, xedges, yedges = np.histogram2d(
+            positions[:, 0], positions[:, 1],
+            bins=[num_bins_x, num_bins_y],
+            range=[[x_min, x_max], [y_min, y_max]],
+            density=True
+        )
+        
+        all_histograms.append(H)
+        max_density = max(max_density, H.max())
+
+    # Create figure with space for colorbar
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=100)
+    
+    # Initialize with first histogram to create colorbar
+    H_init = all_histograms[-1]  # Start with final frame
+    im = ax.imshow(H_init.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+                  vmin=0, vmax=max_density, cmap='inferno', alpha=0.8)
+    
+    # Create colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8)
+    cbar.set_label('Density', rotation=270, labelpad=20, fontsize=12)
+    
+    def update(rev_t):
+        # Reverse time index
+        t = frames.shape[0] - 1 - rev_t
+        true_t = step_map[t]
+        
+        # Update image data
+        H = all_histograms[t]
+        im.set_array(H.T)
+        
+        # Update title
+        ax.set_title(f'Density Evolution - Step {true_t}/{original_steps}', fontsize=14)
+        
+        return [im]
+
+    # Set initial plot properties
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel('x', fontsize=12)
+    ax.set_ylabel('y', fontsize=12)
+    ax.set_aspect('equal')
+
+    # Create animation
+    anim = FuncAnimation(fig, update, frames=target_total_frames, blit=False)
+    anim.save(save_path + ".gif", writer="pillow", fps=fps)
+    plt.close(fig)
 
 
 
@@ -275,19 +368,23 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
 	sample_num = int(2e4)
-	diffusion_steps = 1000
+	diffusion_steps = 50
 	min_beta = 1e-4
 	max_beta = 0.02
 
 	mean_disp_understeps = 10
 
-	norm_U_to_sample = [0.5, 0.2, 0.01]
+	def normalize(U, U_min, U_max):
+		range = U_max-U_min
+		return (U - U_min) / range if range != 0 else 0.0
+
+	conf_to_sample = [1, 3, 6]
 
 	z = torch.randn(diffusion_steps, sample_num, dimensions)
 	z[-1] = 0
 	if conditioning and not zeros:
 		U_max_list = []
-
+		x_orig = []
 		if save_time : 
 			timing_file = f"./resources/sampling_results/conditioning/run_time_smpl_ds{diffusion_steps}.dat"
 			with open(timing_file, "w") as f_time:
@@ -297,11 +394,21 @@ if __name__ == "__main__":
 		with open(metric_file, "w") as f_metr:
 			f_metr.write("# U_norm\tAccuracy (% points sampled within U_max)\n")
 
-		print(f"\nSampling total model with diffusion steps : {diffusion_steps}, with conditions {norm_U_to_sample}")
+		
 		for i in range(len(conf_steps)):
 			file_path = f"./resources/nested_sampling_configs/pos_step{conf_steps[i]}.dat"
-			U_max_list.append(extract_U_max_from_file(file_path)) 
-		for u in norm_U_to_sample:
+			U_max_list.append(extract_U_max_from_file(file_path))
+			if i in conf_to_sample :
+				x_orig.append(extract_configuration_from_file(file_path))
+
+		U_to_sample = [U_max_list[i] for i in conf_to_sample]
+		cond_max, cond_min = max(U_max_list), min(U_max_list)
+		u_to_sample = [normalize(U, cond_min, cond_max) for U in U_to_sample]
+		
+		print(f"\nSampling total model with diffusion steps : {diffusion_steps}, with conditions {[f'{u:.2f}' for u in u_to_sample]}")
+
+		for idx, u in enumerate(u_to_sample) :
+
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
 			start_time = time.time()
@@ -312,22 +419,28 @@ if __name__ == "__main__":
 				with open(timing_file, "a") as f_time:
 					f_time.write(f"{u}\t\t\t{elapsed_time:.6f}\n")
 			save_path = f"./resources/sampling_results/conditioning/"
-			anim_path = save_path + f"smpl_anim_u={u}_ds{int(diffusion_steps)}"
-			img_path = save_path + f"smpl_img_u={u}_ds{int(diffusion_steps)}"
+			anim_path = save_path + f"smpl_anim_u={u:.2f}_ds{int(diffusion_steps)}"
+			img_path = save_path + f"smpl_img_u={u:.2f}_ds{int(diffusion_steps)}"
 			
 			create_sampling_animation(denoised_x, anim_path + ".gif", original_steps=diffusion_steps)
 
-			U_max = denormalize(max(U_max_list), min(U_max_list), u)
+			U_max = U_max_list[conf_to_sample[idx]]
 			dw.plot_configuration(
 				img_path, denoised_x[0], U_max=U_max, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
-			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
+			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u:.2f}")
 	
 			# Mean displacement evolution
 			# displ_path = save_path + f"displeacement_evolution/mean_disp_histo_u={u}_ds{diffusion_steps}"
 			# mean_displ_split(denoised_x, displacements, bin_size=0.15, save_dir=displ_path, n_understeps=mean_disp_understeps)
+			
 			# Histo comparison
-			histo_comparison()
+			histo_path = save_path + f"histograms/histo_u={u:.2f}_ds{diffusion_steps}"
+			histo_comparison(x_orig[idx], denoised_x[0, :, :], bin_size=0.1, save_path=histo_path)
+
+			# histo animation
+			histo_anim_path = save_path + f"histograms/histo_anim_u={u:.2f}_ds{diffusion_steps}"
+			create_histogram_evolution(denoised_x, histo_anim_path, bin_size=0.1, original_steps=diffusion_steps)
 
 			# metric to evaluate accuracy of sampling
 			denoised_fin_u = dw.energy(denoised_x[0])
@@ -355,6 +468,7 @@ if __name__ == "__main__":
 			print(f"Sampling animation & final configuration saved for configuration step {conf_steps[i]}")
 	elif zeros :
 		z = torch.zeros(diffusion_steps, sample_num, dimensions)
+		norm_U_to_sample = [0.5, 0.01]
 		for u in norm_U_to_sample :
 			model_path = f"./trained/diffusion_model_tot.pth"
 			# U_max = 0 # Conditioning variable (U_max), how should this be defined?
@@ -368,4 +482,4 @@ if __name__ == "__main__":
 			)  # Plot the final configuration
 			print(f"Sampling animation & final configuration saved for all configuration steps and input energy = {u}")
 
-	print("\n")
+	print("")
