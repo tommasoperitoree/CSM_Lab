@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = True
+	all_live_samples = False
 	extrapolate = True
 
 	if not training_conditioning : extrapolate = False
