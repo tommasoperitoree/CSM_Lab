@@ -177,7 +177,7 @@ def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understep
 		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 		plt.close(fig)
 
-def histo_comparison (x_original, denoised_x, bin_size, save_path):
+def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=None, diff_vmax=None):
 	orig_positions = np.vstack(x_original)
 	den_positions = np.vstack(denoised_x)
 
@@ -213,16 +213,10 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 	# Create figure with 3 subplots
 	fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=180)
  	
-	# Calculate adaptive color limits
-	vmax_orig = H_orig.max()
-	vmax_den = H_den.max()
-	vmax_both = max(vmax_orig, vmax_den)  # Use same scale for both for comparison
 	
-	#print(f"Original max density: {vmax_orig:.6f}")
-	#print(f"Denoised max density: {vmax_den:.6f}")
 	# Plot 1: Original histogramMa
 	im1 = axes[0].imshow(H_orig.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-						 vmin=0, vmax=vmax_both, cmap='inferno')
+						 vmin=0, vmax=global_vmax, cmap='inferno')
 	axes[0].set_xlabel('x')
 	axes[0].set_ylabel('y')
 	axes[0].set_title('Original')
@@ -230,7 +224,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 
 	# Plot 2: Denoised histogram
 	im2 = axes[1].imshow(H_den.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-						 vmin=0, vmax=vmax_both, cmap='inferno')
+						 vmin=0, vmax=global_vmax, cmap='inferno')
 	axes[1].set_xlabel('x')
 	axes[1].set_ylabel('y')
 	axes[1].set_title('Denoised')
@@ -240,7 +234,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 	# Use a diverging colormap for the difference plot
 	vmax_diff = max(abs(H_diff.min()), abs(H_diff.max()))
 	im3 = axes[2].imshow(H_diff.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-						 vmin=-vmax_diff, vmax=vmax_diff, cmap='RdBu_r')
+						 vmin=-diff_vmax, vmax=diff_vmax, cmap='RdBu_r')
 	axes[2].set_xlabel('x')
 	axes[2].set_ylabel('y')
 	axes[2].set_title('Difference (Orig - Denoised)')
@@ -294,7 +288,6 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 
 	# Pre-compute all histograms
 	all_histograms = []
-	max_density = 0
 	
 	for frame_idx in range(frames.shape[0]):
 		positions = frames[frame_idx].numpy()
@@ -307,21 +300,6 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 		)
 		
 		all_histograms.append(H)
-	
-	# If global_vmax not provided, calculate it from all time steps
-	if global_vmax is None:
-		print("Calculating global color scale for histogram evolution...")
-		global_vmax = 0
-		for t in range(x_trajectory.shape[0]):
-			positions = x_trajectory[t, :, :]
-			H, _, _ = np.histogram2d(
-				positions[:, 0], positions[:, 1],
-				bins=[num_bins_x, num_bins_y],
-				range=[[x_min, x_max], [y_min, y_max]],
-				density=True
-			)
-			global_vmax = max(global_vmax, H.max())
-		print(f"Global maximum density: {global_vmax:.6f}")
 	
 	# Create figure and axis
 	fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
@@ -389,7 +367,7 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
 	sample_num = int(2e4)
-	diffusion_steps = 200
+	diffusion_steps = 50
 	min_beta = 1e-4
 	max_beta = 0.02
 
@@ -400,7 +378,8 @@ if __name__ == "__main__":
 		return (U - U_min) / range if range != 0 else 0.0
 
 	conf_to_sample = [1, 3, 6]
-	histo_max_dens = [2.5, 0.5, 0.4]
+	histo_max_dens = [0.4, 0.5, 2.5]
+	histo_max_diff_dens = [0.3, 0.35, 1.5]
 
 	z = torch.randn(diffusion_steps, sample_num, dimensions)
 	z[-1] = 0
@@ -458,11 +437,11 @@ if __name__ == "__main__":
 			
 			# Histo comparison
 			histo_path = save_path + f"histograms/histo_u={u:.2f}_ds{diffusion_steps}"
-			histo_comparison(x_orig[idx], denoised_x[0, :, :], bin_size=0.1, save_path=histo_path)
+			histo_comparison(x_orig[idx], denoised_x[0, :, :], bin_size=0.1, save_path=histo_path, global_vmax=histo_max_dens[idx], diff_vmax=histo_max_diff_dens[idx])
 
 			# histo animation
 			histo_anim_path = save_path + f"histograms/histo_anim_u={u:.2f}_ds{diffusion_steps}"
-			create_histogram_evolution(denoised_x, histo_anim_path, bin_size=0.1, global_vmax=histo_max_dens[idx])
+			create_histogram_evolution(denoised_x, histo_anim_path, bin_size=0.1, original_steps=diffusion_steps, global_vmax=histo_max_dens[idx])
 
 			# metric to evaluate accuracy of sampling
 			denoised_fin_u = dw.energy(denoised_x[0])
