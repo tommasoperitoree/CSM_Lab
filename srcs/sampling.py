@@ -250,100 +250,121 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path):
 	plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
 	plt.close(fig)
 
-def create_histogram_evolution(denoised_x, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None):
-    """
-    Create an animated GIF with a colorbar showing the evolution of the 2D histogram during sampling
-    
-    Parameters:
-    -----------
-    denoised_x : torch.Tensor
-        Tensor of shape (diffusion_steps, sample_num, dimensions) containing all sampling steps
-    save_path : str
-        Path to save the GIF animation
-    bin_size : float
-        Size of histogram bins
-    duration_seconds : float
-        Total duration of the animation in seconds
-    original_steps : int
-        Original number of diffusion steps for labeling
-    """
-    target_total_frames = 50
-    fps = int(target_total_frames / duration_seconds)
+def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None, global_vmax=None):
+	"""
+	Create animation showing evolution of histogram during diffusion process
+	
+	Parameters:
+	-----------
+	x_trajectory : array-like
+		Trajectory of configurations [time_steps, n_samples, dimensions]
+	bin_size : float
+		Size of histogram bins
+	save_path : str
+		Path to save the animation
+	duration_seconds : float
+		Total duration of the animation in seconds
+	original_steps : int
+		Original number of diffusion steps for labeling
+	global_vmax : float, optional
+		Global maximum value for color scaling. If None, calculates from data.
+	"""
 
-    # Subsample to fixed frame count
-    t_indices = torch.linspace(0, denoised_x.shape[0] - 1, steps=target_total_frames).long()
-    frames = denoised_x[t_indices]
+	target_total_frames = 50
+	fps = int(target_total_frames / duration_seconds)
 
-    # Map frame indices back to diffusion steps
-    if original_steps is None:
-        step_map = t_indices.tolist()
-    else:
-        step_map = torch.linspace(0, original_steps - 1, steps=target_total_frames).long().tolist()
+	# Subsample to fixed frame count
+	t_indices = torch.linspace(0, denoised_x.shape[0] - 1, steps=target_total_frames).long()
+	frames = denoised_x[t_indices]
 
-    # Set grid boundaries
-    x_min, x_max = -5.5, 5.5
-    y_min, y_max = -5.5, 5.5
-    
-    # Calculate number of bins
-    num_bins_x = int((x_max - x_min) / bin_size)
-    num_bins_y = int((y_max - y_min) / bin_size)
+	# Map frame indices back to diffusion steps
+	if original_steps is None:
+		step_map = t_indices.tolist()
+	else:
+		step_map = torch.linspace(0, original_steps - 1, steps=target_total_frames).long().tolist()
 
-    # Pre-compute all histograms
-    all_histograms = []
-    max_density = 0
-    
-    for frame_idx in range(frames.shape[0]):
-        positions = frames[frame_idx].numpy()
-        
-        H, xedges, yedges = np.histogram2d(
-            positions[:, 0], positions[:, 1],
-            bins=[num_bins_x, num_bins_y],
-            range=[[x_min, x_max], [y_min, y_max]],
-            density=True
-        )
-        
-        all_histograms.append(H)
-        max_density = max(max_density, H.max())
+	
+	# Set grid boundaries
+	x_min, x_max = -5.5, 5.5
+	y_min, y_max = -5.5, 5.5
+	
+	# Calculate number of bins based on bin_size
+	num_bins_x = int((x_max - x_min) / bin_size)
+	num_bins_y = int((y_max - y_min) / bin_size)
 
-    # Create figure with space for colorbar
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=100)
-    
-    # Initialize with first histogram to create colorbar
-    H_init = all_histograms[-1]  # Start with final frame
-    im = ax.imshow(H_init.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
-                  vmin=0, vmax=max_density, cmap='inferno', alpha=0.8)
-    
-    # Create colorbar
-    cbar = fig.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label('Density', rotation=270, labelpad=20, fontsize=12)
-    
-    def update(rev_t):
-        # Reverse time index
-        t = frames.shape[0] - 1 - rev_t
-        true_t = step_map[t]
-        
-        # Update image data
-        H = all_histograms[t]
-        im.set_array(H.T)
-        
-        # Update title
-        ax.set_title(f'Density Evolution - Step {true_t}/{original_steps}', fontsize=14)
-        
-        return [im]
+	# Pre-compute all histograms
+	all_histograms = []
+	max_density = 0
+	
+	for frame_idx in range(frames.shape[0]):
+		positions = frames[frame_idx].numpy()
+		
+		H, xedges, yedges = np.histogram2d(
+			positions[:, 0], positions[:, 1],
+			bins=[num_bins_x, num_bins_y],
+			range=[[x_min, x_max], [y_min, y_max]],
+			density=True
+		)
+		
+		all_histograms.append(H)
+	
+	# If global_vmax not provided, calculate it from all time steps
+	if global_vmax is None:
+		print("Calculating global color scale for histogram evolution...")
+		global_vmax = 0
+		for t in range(x_trajectory.shape[0]):
+			positions = x_trajectory[t, :, :]
+			H, _, _ = np.histogram2d(
+				positions[:, 0], positions[:, 1],
+				bins=[num_bins_x, num_bins_y],
+				range=[[x_min, x_max], [y_min, y_max]],
+				density=True
+			)
+			global_vmax = max(global_vmax, H.max())
+		print(f"Global maximum density: {global_vmax:.6f}")
+	
+	# Create figure and axis
+	fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+	
 
-    # Set initial plot properties
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(y_min, y_max)
-    ax.set_xlabel('x', fontsize=12)
-    ax.set_ylabel('y', fontsize=12)
-    ax.set_aspect('equal')
+	# Initialize with first histogram to create colorbar
+	H_init = all_histograms[-1]  # Start with final frame
+	im = ax.imshow(H_init.T, origin='lower', extent=[x_min, x_max, y_min, y_max], 
+				  vmin=0, vmax=global_vmax, cmap='inferno', alpha=0.8)
+   
+	# Create colorbar
+	cbar = fig.colorbar(im, ax=ax, shrink=0.8)
+	cbar.set_label('Density', rotation=270, labelpad=20, fontsize=12)
+	
+	ax.set_xlabel('x', fontsize=12)
+	ax.set_ylabel('y', fontsize=12)
+	title = ax.set_title('', fontsize=14)
+	
+	def update(rev_t):
+		# Reverse time index
+		t = frames.shape[0] - 1 - rev_t
+		true_t = step_map[t]
+		
+		# Update image data
+		H = all_histograms[t]
+		im.set_array(H.T)
+		
+		# Update title
+		ax.set_title(f'Density Evolution - Step {true_t}/{original_steps}', fontsize=14)
+		
+		return [im]
 
-    # Create animation
-    anim = FuncAnimation(fig, update, frames=target_total_frames, blit=False)
-    anim.save(save_path + ".gif", writer="pillow", fps=fps)
-    plt.close(fig)
+	# Set initial plot properties
+	ax.set_xlim(x_min, x_max)
+	ax.set_ylim(y_min, y_max)
+	ax.set_xlabel('x', fontsize=12)
+	ax.set_ylabel('y', fontsize=12)
+	ax.set_aspect('equal')
 
-
+	# Create animation
+	anim = FuncAnimation(fig, update, frames=target_total_frames, blit=False)
+	anim.save(save_path + ".gif", writer="pillow", fps=fps)
+	plt.close(fig)
 
 if __name__ == "__main__":
 
@@ -368,7 +389,7 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
 	sample_num = int(2e4)
-	diffusion_steps = 50
+	diffusion_steps = 200
 	min_beta = 1e-4
 	max_beta = 0.02
 
@@ -379,6 +400,7 @@ if __name__ == "__main__":
 		return (U - U_min) / range if range != 0 else 0.0
 
 	conf_to_sample = [1, 3, 6]
+	histo_max_dens = [2.5, 0.5, 0.4]
 
 	z = torch.randn(diffusion_steps, sample_num, dimensions)
 	z[-1] = 0
@@ -386,11 +408,11 @@ if __name__ == "__main__":
 		U_max_list = []
 		x_orig = []
 		if save_time : 
-			timing_file = f"./resources/sampling_results/conditioning/run_time_smpl_ds{diffusion_steps}.dat"
+			timing_file = f"./resources/sampling_results/conditioning/metrics/run_time_smpl_ds{diffusion_steps}.dat"
 			with open(timing_file, "w") as f_time:
 				f_time.write("# U_norm\tSamplingTime_seconds\n")
 
-		metric_file = f"./resources/sampling_results/conditioning/metric_smpl_ds{diffusion_steps}.dat"
+		metric_file = f"./resources/sampling_results/conditioning/metrics/metric_smpl_ds{diffusion_steps}.dat"
 		with open(metric_file, "w") as f_metr:
 			f_metr.write("# U_norm\tAccuracy (% points sampled within U_max)\n")
 
@@ -440,7 +462,7 @@ if __name__ == "__main__":
 
 			# histo animation
 			histo_anim_path = save_path + f"histograms/histo_anim_u={u:.2f}_ds{diffusion_steps}"
-			create_histogram_evolution(denoised_x, histo_anim_path, bin_size=0.1, original_steps=diffusion_steps)
+			create_histogram_evolution(denoised_x, histo_anim_path, bin_size=0.1, global_vmax=histo_max_dens[idx])
 
 			# metric to evaluate accuracy of sampling
 			denoised_fin_u = dw.energy(denoised_x[0])

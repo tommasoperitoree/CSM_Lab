@@ -30,17 +30,18 @@ if __name__ == "__main__":
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [int(1.5e4/(i+1)) 		# Number of nested sampling steps
+	n_nested_sampl_steps = [int(1.5e4*(1-(i/5)))  		# Number of nested sampling steps
 							for i in range(n_mixed_routine_steps)]
+	n_nested_sampl_steps[0] = 15000
 
 	### Define training parameters
-	smpl_factor = 1								# Sampling factor for the dataset
+	smpl_factor = 0.5								# Sampling factor for the dataset
 	sample_num = int(n_live_points*smpl_factor) # Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 100
-	diffusion_steps = 1000
+	max_epochs = 50
+	diffusion_steps = 500
 	min_beta = 1e-4
 	max_beta = 0.02
 	learning_rate = 1e-3
@@ -55,7 +56,7 @@ if __name__ == "__main__":
 	# Initialize configurations for nested sampling
 	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
 	# initialize from nested sampling configuration
-	x = extract_configuration_from_file(f"./resources/nested_sampling_configs/pos_step{n_nested_sampl_steps[0]}.dat")	# Compute energy for all configurations
+	x = extract_configuration_from_file(f"./resources/nested_sampling_configs/pos_step15000.dat")	# Compute energy for all configurations
 	
 	U_x = dw.energy(x)
 	# Initialize energy call tracking - initial evaluation
@@ -129,8 +130,8 @@ if __name__ == "__main__":
 
 				U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 
-				# Record data periodically (every 100 steps or so to avoid too much data)
-				if i % 100 == 0 or i == int(n_nested_sampl_steps[routine_step]) - 1:
+				# Record data periodically (every 10 steps or so to avoid too much data)
+				if i % 10 == 0 or i == int(n_nested_sampl_steps[routine_step]) - 1:
 					current_time = time.time()
 					elapsed_time = current_time - start_time
 					energy_time_data.append((global_step, elapsed_time, U_max.item(), acceptance_ratio, dx))
@@ -163,9 +164,6 @@ if __name__ == "__main__":
 
 		output_model_path = model_dir_prefix + f"step{routine_steps[-1]}.pth"
         
-		# Record time before training
-		training_start_time = time.time()
-        
 		loss = train(
 			train_data,
 			test_data,
@@ -193,21 +191,11 @@ if __name__ == "__main__":
 		z = torch.randn(diffusion_steps, sample_num, dimensions)
 		z[-1] = 0
 
-		# Record time before sampling
-		sampling_start_time = time.time()
-
 		sampled_x_trajectory, displacements = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=training_conditioning)
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
 		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
-
-		# Record time after sampling
-		sampling_end_time = time.time()
-		elapsed_time = sampling_end_time - start_time
-		energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))  # No acceptance ratio for sampling
-		energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
-
 
 		# Histogram to visualize accuracy 
 		# histo_path = dir_prefix + f"histo_comparison_step{routine_step+1}"
@@ -238,32 +226,23 @@ if __name__ == "__main__":
 			U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 			print(f"\rUsed sample {int(sample_num - final_step_samples.shape[0]+1)} of {int(sample_num)} ({((sample_num - final_step_samples.shape[0])/sample_num)*100:.0f}%) ", end=" ")
 
-			# Record data every 100 samples to avoid too much data
-			if samples_used % 100 == 0:
+			# Record data every 10 samples to avoid too much data
+			if samples_used % 10 == 0:
 				current_time = time.time()
 				elapsed_time = current_time - start_time
 				energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))
 				energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
 
-
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
 		
-		U_x = dw.energy(x)
-		total_energy_calls += n_live_points  # Re-evaluation of all points
 		U_max, max_idx = torch.max(U_x, dim=0)
-
-		# Record final state of this routine step
-		current_time = time.time()
-		elapsed_time = current_time - start_time
-		energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))
-		energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
 
 		print("")
 
 	print("")
 
 	if extrapolate and training_conditioning :
-		z = torch.randn(diffusion_steps, sample_num, dimensions)
+		z = torch.randn(diffusion_steps, n_live_points, dimensions)
 		z[-1] = 0
 		normalized_u = train_data.normalize(U_max)
 		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max=normalized_u, cond=training_conditioning)
@@ -284,5 +263,5 @@ if __name__ == "__main__":
 	print(f"Average energy calls per second: {total_energy_calls/total_time:.2f}")
 
 	# Save both tracking files
-	save_energy_vs_time(energy_time_data, dir_prefix)
-	save_energy_vs_calls(energy_calls_data, dir_prefix)
+	save_energy_vs_time(energy_time_data, dir_prefix + "metrics/")
+	save_energy_vs_calls(energy_calls_data, dir_prefix+ "metrics/")

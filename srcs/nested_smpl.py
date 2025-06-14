@@ -128,8 +128,6 @@ def save_energy_vs_calls(energy_calls_data, output_dir):
 		f.write("# Energy vs Function Calls Data\n")
 		f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
 		f.write("# Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-		f.write(f"# n_live_points: {n_live_points}\n")
-		f.write(f"# n_correl_steps: {n_correl_steps}\n")
 		f.write("#\n")
 		
 		# Write data
