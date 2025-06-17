@@ -96,6 +96,19 @@ def extract_configuration_from_file(filepath):
 	# Convert to PyTorch tensor and return
 	return torch.tensor(x_data, dtype=torch.float32).clone().detach()
 
+def extract_en_calls_from_file (filepath) :
+	with open(filepath, "r") as f:
+		lines = f.readlines()
+		
+		# Find the line containing '# U_max:'
+		for line in lines:
+			if line.startswith("# Energy-calls: "):
+				# Extract the value after 'U_max:'
+				return float(line.split(":")[1].strip())
+	
+	# Raise an error if '# U_max:' is not found
+	raise ValueError(f"Energy calls not found in file: {filepath}")
+ 
 def extract_U_max_from_file(filepath):
 	with open(filepath, "r") as f:
 		lines = f.readlines()

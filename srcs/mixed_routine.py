@@ -3,11 +3,11 @@ import numpy
 import time 
 from datetime import datetime
 
-from class_dataset import ConfigurationsDataset, extract_configuration_from_file
+from class_dataset import ConfigurationsDataset, extract_configuration_from_file, extract_en_calls_from_file
 from train import train, plot_loss
 from nested_smpl import nested_sampling_step, rnd_idx, save_configurations, save_energy_vs_calls, save_energy_vs_time
 from class_double_well_potential import double_well
-from sampling import sampling, histo_comparison, mean_displ_split
+from sampling import sampling
 
 
 if __name__ == "__main__":
@@ -26,22 +26,21 @@ if __name__ == "__main__":
 	n_particles = 1  							# Number of particles
 	dimensions = 2  							# 2D system
 	n_live_points = int(2e4)  					# Number of live points in nested sampling
-	mean_disp_understeps = 25
+	# mean_disp_understeps = 25
 	# to make higher to explore the energy surface with more fine grane 
 
 	n_correl_steps = 5 							# Number of correlation steps
-	n_nested_sampl_steps = [int(1.5e4*(1-(i/5)))  		# Number of nested sampling steps
+	n_nested_sampl_steps = [int(1.5e4) if i==0 else int(1.5e4/i ) 		# Number of nested sampling steps
 							for i in range(n_mixed_routine_steps)]
-	n_nested_sampl_steps[0] = 15000
 
 	### Define training parameters
-	smpl_factor = 0.5								# Sampling factor for the dataset
+	smpl_factor = 1								# Sampling factor for the dataset
 	sample_num = int(n_live_points*smpl_factor) # Number of live points to generate on sample
 	noise_std = 0.5 							# Standard deviation of noise
 	test_fraction = 0.1 
 	batch_size = 128
-	max_epochs = 50
-	diffusion_steps = 500
+	max_epochs = 100
+	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
 	learning_rate = 1e-3
@@ -56,11 +55,11 @@ if __name__ == "__main__":
 	# Initialize configurations for nested sampling
 	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
 	# initialize from nested sampling configuration
-	x = extract_configuration_from_file(f"./resources/nested_sampling_configs/pos_step15000.dat")	# Compute energy for all configurations
+	init_file = f"./resources/nested_sampling_configs/pos_step{n_nested_sampl_steps[0]}.dat" 
+	x = extract_configuration_from_file(init_file)
+	total_energy_calls = extract_en_calls_from_file(init_file)	# Compute energy for all configurations
 	
 	U_x = dw.energy(x)
-	# Initialize energy call tracking - initial evaluation
-	total_energy_calls = n_live_points
 	U_max, max_idx = torch.max(U_x, dim=0)  # Get the maximum energy and its index
 	
 	dx = 0.6
@@ -99,7 +98,7 @@ if __name__ == "__main__":
 	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps} \n\textrapolate = {extrapolate}")
 
 	start_index = 0
-	save_configurations(dw, x, [1], U_max, dir_prefix, plot=True, mixed=True)
+	save_configurations(dw, x, [1], U_max, total_energy_calls, dir_prefix, plot=True, mixed=True)
 	routine_steps.append(1)
 
 	# Global step counter for tracking
@@ -115,16 +114,17 @@ if __name__ == "__main__":
 		
 		if routine_step != 0 :
 			for i in range(int(n_nested_sampl_steps[routine_step])) :
+				which_sampling = 0
 				global_step += 1
 
 				rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
 				x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
 				U_x[max_idx] = U_x[rnd_i]
 
-				acceptance_ratio, step_energy_calls = nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps) 
+				acceptance_ratio = nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps) 
 				
 				# Update total energy calls
-				total_energy_calls += step_energy_calls
+				total_energy_calls += 1
                 
 				if acceptance_ratio < 0.5 : dx /= 2
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 					current_time = time.time()
 					elapsed_time = current_time - start_time
 					energy_time_data.append((global_step, elapsed_time, U_max.item(), acceptance_ratio, dx))
-					energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
+					energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
 				
 				# Print progress bar
 				print(f"\rStep {i + 1} of {int(n_nested_sampl_steps[routine_step])} ({(i/n_nested_sampl_steps[routine_step])*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx}", end="")
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 			print("")
 			routine_steps.append(routine_step+1)
 
-			save_configurations(dw, x, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True)
+			save_configurations(dw, x, [routine_step+1], U_max, total_energy_calls, dir_prefix, plot=True, mixed=True)
 			all_generated_filepaths.append(dir_prefix + f"pos_step{int(routine_step+1)}.dat")
 		else : 
 			print("Configuration loaded from default configuration from nested sampling")
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 		#print(f"Shape of sampled_x: {sampled_x_trajectory.shape}")
 		final_step_samples = sampled_x_trajectory[0, :, :]
 		#print(f"Shape of final_step_samples: {final_step_samples.shape}")
-		save_configurations(dw, final_step_samples, [routine_step+1], U_max, dir_prefix, plot=True, mixed=True, sampled=True)
+		save_configurations(dw, final_step_samples, [routine_step+1], U_max, total_energy_calls, dir_prefix, plot=True, mixed=True, sampled=True)
 
 		# Histogram to visualize accuracy 
 		# histo_path = dir_prefix + f"histo_comparison_step{routine_step+1}"
@@ -209,6 +209,7 @@ if __name__ == "__main__":
 		### Using the model-generated data to progress the sampling algorithm
 		
 		samples_used = 0
+		which_sampling = 1
 		while final_step_samples.shape[0] > 0 : 
 			idx_to_check = torch.randint(0, final_step_samples.shape[0], (1,)).item()
 			new_sample = final_step_samples[idx_to_check]
@@ -231,7 +232,7 @@ if __name__ == "__main__":
 				current_time = time.time()
 				elapsed_time = current_time - start_time
 				energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))
-				energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
+				energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
 
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
 		
@@ -247,12 +248,12 @@ if __name__ == "__main__":
 		normalized_u = train_data.normalize(U_max)
 		sampled_extrapolated_trajectory, displacement = sampling(output_model_path, z, diffusion_steps, min_beta, max_beta, U_max=normalized_u, cond=training_conditioning)
 		extrapolated_sample = sampled_extrapolated_trajectory[0, :, :]
-		save_configurations(dw, extrapolated_sample, [-2], U_max.item(), dir_prefix, plot=True, mixed=True)
+		save_configurations(dw, extrapolated_sample, [-2], U_max.item(), total_energy_calls, dir_prefix, plot=True, mixed=True)
 	
 	else : 
 		if extrapolate :
 			print("\nCareful, no extrapolation possible without conditioned training")
-		else : save_configurations(dw, x, [-1], U_max, dir_prefix, plot=True, mixed=True)
+		else : save_configurations(dw, x, [-1], U_max, total_energy_calls, dir_prefix, plot=True, mixed=True)
 
 	
 	# Final summary

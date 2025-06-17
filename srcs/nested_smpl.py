@@ -19,14 +19,13 @@ def rnd_idx (n_live_points, max_idx):
 
 def nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps):
 	acceptance = 0  # Initialize acceptance count
-	step_energy_calls = 0
 	for _ in range(n_correl_steps):
 		# Generate random perturbations for all configurations in a batch
 		x_step = (torch.rand((n_live_points, dimensions), device=x.device) - 0.5) * dx  # Random perturbations in [-0.1, 0.1]
 		
 		x_new = x + x_step  # Propose updated configurations for all points
 		U_new_x = dw.energy(x_new)	# Compute energies for all proposed configurations 
-		step_energy_calls += x_new.shape[0]
+		
 
 		# Accept configurations where the new energy is less than U_max
 		mask = U_new_x < U_max  # Boolean mask for accepted configurations
@@ -36,17 +35,19 @@ def nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_cor
 		x[mask] = x_new[mask]  # Update configurations for accepted configurations
 		
 	acceptance /= (n_live_points * n_correl_steps)  # Calculate acceptance rate
-	return acceptance, step_energy_calls  # Return acceptance rate
+	return acceptance  # Return acceptance rate
 
-def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True, mixed=False, sampled=False):
+def save_configurations (dw, x_confs, conf_steps, U_max_confs, fin_energy_calls, output_dir, plot=True, mixed=False, sampled=False):
 	
 	for i, conf_step in enumerate(conf_steps):
 		if not mixed :
 			x = x_confs[i]  # Get the configuration at the current step
 			U_max = U_max_confs[i]  # Get the maximum energy for the current configuration
+			en_calls = fin_energy_calls[i]
 		else :
 			x = x_confs
 			U_max = U_max_confs
+			en_calls = fin_energy_calls
 
 		
 		output_file = output_dir + f"pos_step{int(conf_step)}"
@@ -66,6 +67,7 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, output_dir, plot=
 			# Write the step and U_max
 			f.write(f"# Step: {conf_step}\n")
 			f.write(f"# U_max: {U_max.item() if torch.is_tensor(U_max) else U_max}\n")
+			f.write(f"# Energy-calls: {en_calls}\n")
 
 			# Write the tensor x
 			f.write("# x (configurations):\n")
@@ -126,13 +128,16 @@ def save_energy_vs_calls(energy_calls_data, output_dir):
 	with open(filename, 'w') as f:
 		# Write header with comments
 		f.write("# Energy vs Function Calls Data\n")
-		f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
+		if energy_calls_data.shape[1] == 4 : f.write("# Columns: Step, NS=0/MS=1, Total_Energy_Calls, U_max\n")
+		else : f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
 		f.write("# Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
 		f.write("#\n")
 		
 		# Write data
 		for data_point in energy_calls_data:
-			f.write(f"{data_point[0]:<8} {data_point[1]:<12} {data_point[2]:<12.6f}\n")
+			if energy_calls_data.shape[1] == 4 :
+				f.write(f"{data_point[0]:<8} {data_point[1]:<12} {data_point[2]:<12} {data_point[3]:<12.6f}\n")
+			else : f.write(f"{data_point[0]:<8} {data_point[1]:<12}{data_point[2]:<12.6f}\n")
 	
 	print(f"\nEnergy vs calls data saved to: {filename}")
 
@@ -156,7 +161,6 @@ if __name__ == "__main__":
 
 	# Compute energy for all configurations - this is n_live_points energy calls
 	U_x = dw.energy(x)  
-	total_energy_calls = n_live_points  # Initial energy evaluation
 
 	conf_steps = [1.5e4, 2e4, 2.6e4, 3.3e4, 5.1e4, 6e4, 7e4, 8.1e4, 9.2e4, 1.5e5]
 	max_steps = int(max(conf_steps))
@@ -169,9 +173,11 @@ if __name__ == "__main__":
 	start_time = time.time()
 	energy_time_data = []
 	energy_calls_data = []
+	fin_energy_calls = []
+	total_energy_calls = 0
 	
 	# Recording frequency
-	record_every = max(1, max_steps // 2000)
+	record_every = max(1, max_steps // 1000)
 	
 	for i in range(max_steps):
 		rnd_i = rnd_idx(n_live_points, max_idx)
@@ -179,12 +185,11 @@ if __name__ == "__main__":
 		U_x[max_idx] = U_x[rnd_i]
 
 		# Modified nested sampling step that returns energy call count
-		acceptance_ratio, step_energy_calls = nested_sampling_step(
+		acceptance_ratio = nested_sampling_step(
 			dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps
 		)
-		
 		# Update total energy calls
-		total_energy_calls += step_energy_calls
+		total_energy_calls += 1
 		
 		if acceptance_ratio < 0.5:
 			dx /= 2
@@ -202,6 +207,8 @@ if __name__ == "__main__":
 		if (i + 1) in conf_steps:
 			U_max_confs.append(U_max)
 			x_confs.append(x.clone())
+			fin_energy_calls.append(total_energy_calls)
+
 
 		# Progress bar
 		print(f"\rStep {i + 1} of {max_steps} ({(i/max_steps)*100:.0f}%), "
@@ -215,9 +222,10 @@ if __name__ == "__main__":
 	print(f"Average energy calls per second: {total_energy_calls/total_time:.2f}")
 
 	output_dir = "./resources/nested_sampling_configs/"
-	save_configurations(dw, x_confs, conf_steps, U_max_confs, output_dir, plot=True)
+	save_configurations(dw, x_confs, conf_steps, U_max_confs, fin_energy_calls, output_dir, plot=True)
 	
 	# Save both tracking files
+	output_dir += "metrics/"
 	save_energy_vs_time(energy_time_data, output_dir)
 	save_energy_vs_calls(energy_calls_data, output_dir)
 	print("")
