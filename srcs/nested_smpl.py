@@ -79,14 +79,14 @@ def save_configurations (dw, x_confs, conf_steps, U_max_confs, fin_energy_calls,
 		if plot : 
 			dw.plot_configuration(img_output_file, x_conf=x, U_max=U_max)  # Plot the configuration 
 
-def save_energy_vs_time(energy_time_data, output_dir):
+def save_analysis_data(data, output_dir):
 	"""
 	Save energy vs time data to DAT file
 	
 	Parameters:
 	-----------
-	energy_time_data : list of tuples
-		List containing (step, time_elapsed, U_max, acceptance_ratio, dx) tuples
+	data : list of tuples
+		List containing (step, sampling_type, time_elapsed, energy_calls, U_max) tuples
 	output_dir : str
 		Directory to save the file
 	"""
@@ -94,58 +94,20 @@ def save_energy_vs_time(energy_time_data, output_dir):
 	
 	# Create filename with timestamp
 	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-	filename = os.path.join(output_dir, f"energy_vs_time_{timestamp}.dat")
+	filename = os.path.join(output_dir, f"analysis_{timestamp}.dat")
 	
 	with open(filename, 'w') as f:
 		# Write header with comments
-		f.write("# Energy vs Time Data\n")
+		f.write("# Data Analysis \n")
 		f.write("# Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-		f.write("# Columns: Step, Time_Elapsed_s, U_max, Acceptance_Ratio, dx\n")
+		f.write("# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max\n")
 		f.write("#\n")
 		
 		# Write data
-		for data_point in energy_time_data:
-			f.write(f"{data_point[0]:<8} {data_point[1]:<12.6f} {data_point[2]:<12.6f} {data_point[3]:<12.6f} {data_point[4]:<12.6f}\n")
-	print(f"\nEnergy vs time data saved to: {filename}")
+		for data_point in data:
+			f.write(f"{data_point[0]:<8} {data_point[1]:<8} {data_point[2]:<12.6f} {data_point[3]:<12} {data_point[4]:<12.6f}\n")
 
-def save_energy_vs_calls(energy_calls_data, output_dir):
-	"""
-	Save U_max vs energy function calls data to DAT file
-	
-	Parameters:
-	-----------
-	energy_calls_data : list of tuples
-		List containing (step, total_energy_calls, U_max) tuples
-	output_dir : str
-		Directory to save the file
-	"""
-	os.makedirs(output_dir, exist_ok=True)
-	
-	# Create filename with timestamp
-	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-	filename = os.path.join(output_dir, f"energy_vs_calls_{timestamp}.dat")
-	
-	has_sampling_type = len(energy_calls_data[0]) == 4
-
-	with open(filename, 'w') as f:
-		# Write header with comments
-		f.write("# Energy vs Function Calls Data\n")
-		if has_sampling_type : 
-			f.write("# Columns: Step, NS=0/MS=1, Total_Energy_Calls, U_max\n")
-		else : 
-			f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
-		f.write("# Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-		f.write("#\n")
-		
-		# Write data
-		for data_point in energy_calls_data:
-			if has_sampling_type :
-				f.write(f"{data_point[0]:<8} {data_point[1]:<8} {data_point[2]:<12} {data_point[3]:<12.6f}\n")
-			else : 
-				f.write(f"{data_point[0]:<8} {data_point[1]:<12}{data_point[2]:<12.6f}\n")
-	
-	print(f"\nEnergy vs calls data saved to: {filename}")
-
+	print(f"\nAnalysis data saved to: {filename}")
 
 if __name__ == "__main__":
 
@@ -176,13 +138,12 @@ if __name__ == "__main__":
 
 	# Initialize time and energy call tracking
 	start_time = time.time()
-	energy_time_data = []
-	energy_calls_data = []
+	analysis_data = []
 	fin_energy_calls = []
 	total_energy_calls = 0
 	
 	# Recording frequency
-	record_every = max(1, max_steps // 1000)
+	record_every = max(1, max_steps // 500)
 	
 	for i in range(max_steps):
 		rnd_i = rnd_idx(n_live_points, max_idx)
@@ -194,7 +155,7 @@ if __name__ == "__main__":
 			dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps
 		)
 		# Update total energy calls
-		total_energy_calls += 1
+		total_energy_calls += (n_live_points*n_correl_steps)
 		
 		if acceptance_ratio < 0.5:
 			dx /= 2
@@ -205,8 +166,8 @@ if __name__ == "__main__":
 		if i % record_every == 0 or (i + 1) in conf_steps:
 			current_time = time.time()
 			elapsed_time = current_time - start_time
-			energy_time_data.append((i + 1, elapsed_time, U_max.item(), acceptance_ratio, dx))
-			energy_calls_data.append((i + 1, total_energy_calls, U_max.item()))
+			analysis_data.append((i + 1, 0, elapsed_time, total_energy_calls, U_max.item()))
+			# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max
 
 		# Save configurations
 		if (i + 1) in conf_steps:
@@ -231,6 +192,5 @@ if __name__ == "__main__":
 	
 	# Save both tracking files
 	output_dir += "metrics/"
-	save_energy_vs_time(energy_time_data, output_dir)
-	save_energy_vs_calls(energy_calls_data, output_dir)
+	save_analysis_data(analysis_data, output_dir)
 	print("")

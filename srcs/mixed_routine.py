@@ -5,7 +5,7 @@ from datetime import datetime
 
 from class_dataset import ConfigurationsDataset, extract_configuration_from_file, extract_en_calls_from_file
 from train import train, plot_loss
-from nested_smpl import nested_sampling_step, rnd_idx, save_configurations, save_energy_vs_calls, save_energy_vs_time
+from nested_smpl import nested_sampling_step, rnd_idx, save_configurations, save_analysis_data
 from class_double_well_potential import double_well
 from sampling import sampling
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = False
+	all_live_samples = True
 	extrapolate = True
 
 	if not training_conditioning : extrapolate = False
@@ -54,8 +54,10 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device="cpu", eps=3., c=1., d=0.5)
 	# Initialize configurations for nested sampling
 	x = dw.init_conf(n_live_points, lower_bounds=[-1, -3.5], upper_bounds=[1, 3.5])
+	
 	# initialize from nested sampling configuration
-	init_file = f"./resources/nested_sampling_configs/pos_step{n_nested_sampl_steps[0]}.dat" 
+	glob_step = n_nested_sampl_steps[0]
+	init_file = f"./resources/nested_sampling_configs/pos_step{glob_step}.dat" 
 	x = extract_configuration_from_file(init_file)
 	total_energy_calls = extract_en_calls_from_file(init_file)	# Compute energy for all configurations
 	
@@ -87,13 +89,12 @@ if __name__ == "__main__":
 	
 	# Initialize time and energy call tracking
 	start_time = time.time()
-	energy_time_data = []
-	energy_calls_data = []
+	analysis_data = []
 	    
 	# Initial data point
-	energy_time_data.append((0, 0.0, U_max.item(), 0.0, dx))  # Step 0, time 0, initial U_max, no acceptance yet
-	energy_calls_data.append((0, 0, total_energy_calls, U_max.item()))
-        
+	# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max
+	analysis_data.append((glob_step, 0, 0.0, total_energy_calls, U_max.item()))
+
 		
 	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps} \n\textrapolate = {extrapolate}")
 
@@ -101,8 +102,6 @@ if __name__ == "__main__":
 	save_configurations(dw, x, [1], U_max, total_energy_calls, dir_prefix, plot=True, mixed=True)
 	routine_steps.append(1)
 
-	# Global step counter for tracking
-	global_step = 0
 
 	for routine_step in range(n_mixed_routine_steps) :
 
@@ -115,7 +114,7 @@ if __name__ == "__main__":
 		if routine_step != 0 :
 			which_sampling = 0
 			for i in range(int(n_nested_sampl_steps[routine_step])) :
-				global_step += 1
+				glob_step += 1
 
 				rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
 				x[max_idx] = x[rnd_i]  # Replace the configuration with the one at random_idx
@@ -124,7 +123,7 @@ if __name__ == "__main__":
 				acceptance_ratio = nested_sampling_step(dw, x, U_x, U_max, dx, n_live_points, dimensions, n_correl_steps) 
 				
 				# Update total energy calls
-				total_energy_calls += 1
+				total_energy_calls += (n_live_points*n_correl_steps)
                 
 				if acceptance_ratio < 0.5 : dx /= 2
 
@@ -134,8 +133,8 @@ if __name__ == "__main__":
 				if i % 10 == 0 or i == int(n_nested_sampl_steps[routine_step]) - 1:
 					current_time = time.time()
 					elapsed_time = current_time - start_time
-					energy_time_data.append((global_step, elapsed_time, U_max.item(), acceptance_ratio, dx))
-					energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
+					# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max
+					analysis_data.append((glob_step, which_sampling, elapsed_time, total_energy_calls, U_max.item()))
 				
 				# Print progress bar
 				print(f"\rStep {i + 1} of {int(n_nested_sampl_steps[routine_step])} ({(i/n_nested_sampl_steps[routine_step])*100:.0f}%), acceptance = {acceptance_ratio:.4f}, dx = {dx}", end="")
@@ -180,8 +179,9 @@ if __name__ == "__main__":
 		# Record time after training
 		training_end_time = time.time()
 		elapsed_time = training_end_time - start_time
-		energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))  # No acceptance ratio for training
-		energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
+		
+		# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max
+		analysis_data.append((glob_step, which_sampling, elapsed_time, total_energy_calls, U_max.item()))  # No acceptance ratio for training
         
 		# Plot and save the loss
 		plot_loss(loss, dir_prefix, int(routine_step+1), all_live_samples)
@@ -218,6 +218,7 @@ if __name__ == "__main__":
 
 			# Count energy call
 			total_energy_calls += 1
+			glob_step += 1
 			samples_used += 1
 
 			if U_new_sample.item() < U_max.item():
@@ -232,8 +233,7 @@ if __name__ == "__main__":
 			if samples_used % 10 == 0:
 				current_time = time.time()
 				elapsed_time = current_time - start_time
-				energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))
-				energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
+				analysis_data.append((glob_step, which_sampling, elapsed_time, total_energy_calls, U_max.item()))  # No acceptance ratio for training
 
 			final_step_samples = torch.cat((final_step_samples[:idx_to_check], final_step_samples[idx_to_check+1:]), dim=0)
 		
@@ -265,5 +265,4 @@ if __name__ == "__main__":
 	print(f"Average energy calls per second: {total_energy_calls/total_time:.2f}")
 
 	# Save both tracking files
-	save_energy_vs_time(energy_time_data, dir_prefix + "metrics/")
-	save_energy_vs_calls(energy_calls_data, dir_prefix+ "metrics/")
+	save_analysis_data(analysis_data, dir_prefix + "metrics/")

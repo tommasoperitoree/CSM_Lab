@@ -211,7 +211,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=N
 	H_diff = H_orig - H_den
 
 	# Create figure with 3 subplots
-	fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=180)
+	fig, axes = plt.subplots(1, 3, figsize=(11, 3), dpi=400)
  	
 	
 	# Plot 1: Original histogramMa
@@ -227,7 +227,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=N
 						 vmin=0, vmax=global_vmax, cmap='inferno')
 	axes[1].set_xlabel('x')
 	axes[1].set_ylabel('y')
-	axes[1].set_title('Denoised')
+	axes[1].set_title('Generated')
 	plt.colorbar(im2, ax=axes[1], label='Density')
 
 	# Plot 3: Difference histogram (Original - Denoised)
@@ -237,11 +237,11 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=N
 						 vmin=-diff_vmax, vmax=diff_vmax, cmap='RdBu_r')
 	axes[2].set_xlabel('x')
 	axes[2].set_ylabel('y')
-	axes[2].set_title('Difference (Orig - Denoised)')
+	axes[2].set_title('Difference (Orig - Generated)')
 	plt.colorbar(im3, ax=axes[2], label='Density Difference')
 
 	plt.tight_layout()
-	plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
+	plt.savefig(save_path + ".png", dpi=400, bbox_inches='tight')
 	plt.close(fig)
 
 def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None, global_vmax=None):
@@ -302,7 +302,7 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 		all_histograms.append(H)
 	
 	# Create figure and axis
-	fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
+	fig, ax = plt.subplots(figsize=(4, 3), dpi=400)
 	
 
 	# Initialize with first histogram to create colorbar
@@ -312,11 +312,11 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
    
 	# Create colorbar
 	cbar = fig.colorbar(im, ax=ax, shrink=0.8)
-	cbar.set_label('Density', rotation=270, labelpad=20, fontsize=12)
+	cbar.set_label('Density', rotation=270, labelpad=20)
 	
-	ax.set_xlabel('x', fontsize=12)
-	ax.set_ylabel('y', fontsize=12)
-	title = ax.set_title('', fontsize=14)
+	ax.set_xlabel('x')
+	ax.set_ylabel('y')
+	title = ax.set_title('')
 	
 	def update(rev_t):
 		# Reverse time index
@@ -328,7 +328,7 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 		im.set_array(H.T)
 		
 		# Update title
-		ax.set_title(f'Density Evolution - Step {true_t}/{original_steps}', fontsize=14)
+		ax.set_title(f'Density Evolution - Step {true_t}/{original_steps}')
 		
 		return [im]
 
