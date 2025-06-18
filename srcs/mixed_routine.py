@@ -92,7 +92,7 @@ if __name__ == "__main__":
 	    
 	# Initial data point
 	energy_time_data.append((0, 0.0, U_max.item(), 0.0, dx))  # Step 0, time 0, initial U_max, no acceptance yet
-	energy_calls_data.append((0, total_energy_calls, U_max.item()))
+	energy_calls_data.append((0, 0, total_energy_calls, U_max.item()))
         
 		
 	print(f"\n\n Starting Mixed Routine schedule with : \n\tn_live_points = {n_live_points} \n\tconditioning = {training_conditioning} \n\tall_live_samples = {all_live_samples} \n\tn_mixed_routine_steps = {n_mixed_routine_steps} \n\tn_nested_sampl_steps = {n_nested_sampl_steps} \n\textrapolate = {extrapolate}")
@@ -113,8 +113,8 @@ if __name__ == "__main__":
 		print(f"\n__ Nested Sampling segment - routine step #{routine_step+1} __")
 		
 		if routine_step != 0 :
+			which_sampling = 0
 			for i in range(int(n_nested_sampl_steps[routine_step])) :
-				which_sampling = 0
 				global_step += 1
 
 				rnd_i = rnd_idx(n_live_points, max_idx)  # Get a random index that is not max_idx
@@ -163,7 +163,8 @@ if __name__ == "__main__":
 		test_data = ConfigurationsDataset(train_data_filepaths, test_fraction, train=False, cond=training_conditioning)
 
 		output_model_path = model_dir_prefix + f"step{routine_steps[-1]}.pth"
-        
+		which_sampling = 1
+
 		loss = train(
 			train_data,
 			test_data,
@@ -180,7 +181,7 @@ if __name__ == "__main__":
 		training_end_time = time.time()
 		elapsed_time = training_end_time - start_time
 		energy_time_data.append((global_step, elapsed_time, U_max.item(), 0.0, dx))  # No acceptance ratio for training
-		energy_calls_data.append((global_step, total_energy_calls, U_max.item()))
+		energy_calls_data.append((global_step, which_sampling, total_energy_calls, U_max.item()))
         
 		# Plot and save the loss
 		plot_loss(loss, dir_prefix, int(routine_step+1), all_live_samples)

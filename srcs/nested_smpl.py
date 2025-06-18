@@ -125,19 +125,24 @@ def save_energy_vs_calls(energy_calls_data, output_dir):
 	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 	filename = os.path.join(output_dir, f"energy_vs_calls_{timestamp}.dat")
 	
+	has_sampling_type = len(energy_calls_data[0]) == 4
+
 	with open(filename, 'w') as f:
 		# Write header with comments
 		f.write("# Energy vs Function Calls Data\n")
-		if energy_calls_data.shape[1] == 4 : f.write("# Columns: Step, NS=0/MS=1, Total_Energy_Calls, U_max\n")
-		else : f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
+		if has_sampling_type : 
+			f.write("# Columns: Step, NS=0/MS=1, Total_Energy_Calls, U_max\n")
+		else : 
+			f.write("# Columns: Step, Total_Energy_Calls, U_max\n")
 		f.write("# Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
 		f.write("#\n")
 		
 		# Write data
 		for data_point in energy_calls_data:
-			if energy_calls_data.shape[1] == 4 :
-				f.write(f"{data_point[0]:<8} {data_point[1]:<12} {data_point[2]:<12} {data_point[3]:<12.6f}\n")
-			else : f.write(f"{data_point[0]:<8} {data_point[1]:<12}{data_point[2]:<12.6f}\n")
+			if has_sampling_type :
+				f.write(f"{data_point[0]:<8} {data_point[1]:<8} {data_point[2]:<12} {data_point[3]:<12.6f}\n")
+			else : 
+				f.write(f"{data_point[0]:<8} {data_point[1]:<12}{data_point[2]:<12.6f}\n")
 	
 	print(f"\nEnergy vs calls data saved to: {filename}")
 
