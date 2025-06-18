@@ -162,7 +162,6 @@ if __name__ == "__main__":
 		test_data = ConfigurationsDataset(train_data_filepaths, test_fraction, train=False, cond=training_conditioning)
 
 		output_model_path = model_dir_prefix + f"step{routine_steps[-1]}.pth"
-		which_sampling = 1
 
 		loss = train(
 			train_data,
@@ -181,6 +180,7 @@ if __name__ == "__main__":
 		elapsed_time = training_end_time - start_time
 		
 		# Columns: Step, NS=0/MS=1, Time_Elapsed_s, Total_energy_calls, U_max
+		which_sampling = 1
 		analysis_data.append((glob_step, which_sampling, elapsed_time, total_energy_calls, U_max.item()))  # No acceptance ratio for training
         
 		# Plot and save the loss
