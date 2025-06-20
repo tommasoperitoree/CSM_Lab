@@ -4,6 +4,8 @@ import numpy as np
 import os
 from matplotlib.animation import FuncAnimation
 import time
+from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
+
 
 from forward_process import calculate_parameters
 from class_dataset import extract_U_max_from_file, extract_configuration_from_file
@@ -64,7 +66,7 @@ def sampling(model_path, z, diffusion_steps, min_beta, max_beta, U_max=0, cond=F
 
 	return denoised_x, displacements
 
-def create_sampling_animation(denoised_x, save_path, duration_seconds=4.0, original_steps=None):
+def create_sampling_animation(denoised_x, save_path, duration_seconds=4.0, original_steps=None, save_format='mp4'):
 	target_total_frames = 50  # fixed across all animations
 	fps = int(target_total_frames / duration_seconds)
 
@@ -97,7 +99,36 @@ def create_sampling_animation(denoised_x, save_path, duration_seconds=4.0, origi
 		return (scatter,)
 
 	anim = FuncAnimation(fig, update, frames=target_total_frames, init_func=init, blit=True)
-	anim.save(save_path, writer="pillow", fps=fps)
+
+	
+	# Save animation based on format
+	if save_format.lower() == 'mp4':
+		try:
+			# Try FFMpegWriter first
+			writer = FFMpegWriter(fps=fps, 
+								 metadata=dict(title='Histogram Evolution', 
+											 artist='Diffusion Sampling',
+											 comment='Density evolution during reverse diffusion'),
+								 extra_args=['-vcodec', 'libx264', '-pix_fmt', 'yuv420p'])
+			
+			filename = save_path + ".mp4"
+			anim.save(filename, writer=writer, dpi=300)
+			print(f"Saved MP4 animation to: {filename}")
+			
+		except Exception as e:
+			print(f"FFmpeg failed ({e}), falling back to GIF")
+			filename = save_path + ".gif"
+			anim.save(filename, writer=PillowWriter(fps=fps))
+			print(f"Saved GIF animation to: {filename}")
+			
+	elif save_format.lower() == 'gif':
+		filename = save_path + ".gif"
+		anim.save(filename, writer=PillowWriter(fps=fps))
+		print(f"Saved GIF animation to: {filename}")
+	
+	else:
+		raise ValueError(f"Unsupported format: {save_format}. Use 'mp4' or 'gif'")
+	
 	plt.close(fig)
 
 def mean_displ_split (denoised_x, displacements, bin_size, save_dir, n_understeps):
@@ -211,7 +242,7 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=N
 	H_diff = H_orig - H_den
 
 	# Create figure with 3 subplots
-	fig, axes = plt.subplots(1, 3, figsize=(11, 3), dpi=400)
+	fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=400)
  	
 	
 	# Plot 1: Original histogramMa
@@ -237,14 +268,14 @@ def histo_comparison (x_original, denoised_x, bin_size, save_path, global_vmax=N
 						 vmin=-diff_vmax, vmax=diff_vmax, cmap='RdBu_r')
 	axes[2].set_xlabel('x')
 	axes[2].set_ylabel('y')
-	axes[2].set_title('Difference (Orig - Generated)')
+	axes[2].set_title('Difference (Orig - Gen)')
 	plt.colorbar(im3, ax=axes[2], label='Density Difference')
 
 	plt.tight_layout()
 	plt.savefig(save_path + ".png", dpi=400, bbox_inches='tight')
 	plt.close(fig)
 
-def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None, global_vmax=None):
+def create_histogram_evolution(denoised_x, save_path, bin_size=0.1, duration_seconds=4.0, original_steps=None, global_vmax=None, save_format='mp4'):
 	"""
 	Create animation showing evolution of histogram during diffusion process
 	
@@ -302,7 +333,7 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 		all_histograms.append(H)
 	
 	# Create figure and axis
-	fig, ax = plt.subplots(figsize=(4, 3), dpi=400)
+	fig, ax = plt.subplots(figsize=(4, 3.5), dpi=400)
 	
 
 	# Initialize with first histogram to create colorbar
@@ -341,7 +372,35 @@ def create_histogram_evolution(x_trajectory, save_path, bin_size=0.1, duration_s
 
 	# Create animation
 	anim = FuncAnimation(fig, update, frames=target_total_frames, blit=False)
-	anim.save(save_path + ".gif", writer="pillow", fps=fps)
+	
+	# Save animation based on format
+	if save_format.lower() == 'mp4':
+		try:
+			# Try FFMpegWriter first
+			writer = FFMpegWriter(fps=fps, 
+								 metadata=dict(title='Histogram Evolution', 
+											 artist='Diffusion Sampling',
+											 comment='Density evolution during reverse diffusion'),
+								 extra_args=['-vcodec', 'libx264', '-pix_fmt', 'yuv420p'])
+			
+			filename = save_path + ".mp4"
+			anim.save(filename, writer=writer, dpi=300)
+			print(f"Saved MP4 animation to: {filename}")
+			
+		except Exception as e:
+			print(f"FFmpeg failed ({e}), falling back to GIF")
+			filename = save_path + ".gif"
+			anim.save(filename, writer=PillowWriter(fps=fps))
+			print(f"Saved GIF animation to: {filename}")
+			
+	elif save_format.lower() == 'gif':
+		filename = save_path + ".gif"
+		anim.save(filename, writer=PillowWriter(fps=fps))
+		print(f"Saved GIF animation to: {filename}")
+	
+	else:
+		raise ValueError(f"Unsupported format: {save_format}. Use 'mp4' or 'gif'")
+	
 	plt.close(fig)
 
 if __name__ == "__main__":
@@ -367,7 +426,7 @@ if __name__ == "__main__":
 	dw = double_well(n_particles=n_particles, dimensions=dimensions, device=device, eps=3., c=1., d=0.5)
 
 	sample_num = int(2e4)
-	diffusion_steps = 50
+	diffusion_steps = 1000
 	min_beta = 1e-4
 	max_beta = 0.02
 
@@ -423,7 +482,7 @@ if __name__ == "__main__":
 			anim_path = save_path + f"smpl_anim_u={u:.2f}_ds{int(diffusion_steps)}"
 			img_path = save_path + f"smpl_img_u={u:.2f}_ds{int(diffusion_steps)}"
 			
-			create_sampling_animation(denoised_x, anim_path + ".gif", original_steps=diffusion_steps)
+			create_sampling_animation(denoised_x, anim_path, original_steps=diffusion_steps)
 
 			U_max = U_max_list[conf_to_sample[idx]]
 			dw.plot_configuration(
@@ -458,7 +517,7 @@ if __name__ == "__main__":
 			save_path = f"./resources/sampling_results/steps/"
 			anim_path = save_path + f"smpl_anim_step{conf_steps[i]}"
 			img_path = save_path + f"smpl_img_step{conf_steps[i]}"
-			create_sampling_animation(denoised_x, anim_path + ".gif")
+			create_sampling_animation(denoised_x, anim_path)
 
 			U_max = extract_U_max_from_file(f"./resources/nested_sampling_configs/pos_step{conf_steps[i]}.dat")
 
@@ -477,7 +536,7 @@ if __name__ == "__main__":
 			save_path = f"./resources/sampling_results/zeros/"
 			anim_path = save_path + f"smpl_anim_zeros_u={u}"
 			img_path = save_path + f"smpl_img_zeros_u={u}"
-			create_sampling_animation(denoised_x, diffusion_steps, anim_path + ".gif")
+			create_sampling_animation(denoised_x, diffusion_steps, anim_path)
 			dw.plot_configuration(
 				img_path, denoised_x[0], U_max=u, U_max_cont=True, sampling=True
 			)  # Plot the final configuration
