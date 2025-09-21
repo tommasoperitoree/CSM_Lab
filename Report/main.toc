@@ -17,8 +17,8 @@
 \contentsline {subsection}{\numberline {5.1}Diffusion model evaluation}{12}{subsection.5.1}%
 \contentsline {subsection}{\numberline {5.2}Mixed algorithm}{14}{subsection.5.2}%
 \contentsline {subsubsection}{\numberline {5.2.1}Conditioning}{14}{subsubsection.5.2.1}%
-\contentsline {subsubsection}{\numberline {5.2.2}Multiple live sets to train}{15}{subsubsection.5.2.2}%
+\contentsline {subsubsection}{\numberline {5.2.2}Multiple live sets to train}{14}{subsubsection.5.2.2}%
 \contentsline {subsubsection}{\numberline {5.2.3}Extrapolation}{15}{subsubsection.5.2.3}%
-\contentsline {subsubsection}{\numberline {5.2.4}Performances}{16}{subsubsection.5.2.4}%
-\contentsline {section}{\numberline {6}Conclusions}{19}{section.6}%
-\contentsline {section}{References}{20}{section*.13}%
+\contentsline {subsubsection}{\numberline {5.2.4}Performances}{15}{subsubsection.5.2.4}%
+\contentsline {section}{\numberline {6}Conclusions}{18}{section.6}%
+\contentsline {section}{References}{19}{section*.13}%

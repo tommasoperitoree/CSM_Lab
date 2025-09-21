@@ -1,22 +1,21 @@
 # Fdb version 4
-["bibtex main"] 1758453603.81084 "main.aux" "main.bbl" "main" 1758453917.48773 0
+["bibtex main"] 1758454010.16028 "main.aux" "main.bbl" "main" 1758454015.07047 0
   "./main.bib" 1758446246 3485 dce16481667ee589d8088946a40ed7fd ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/bibtex/bst/base/unsrt.bst" 1741388039 18030 1376b4b231b50c66211e47e42eda2875 ""
-  "main.aux" 1758453913.45172 11752 f4ccfe918503ac87d07b5ebb7c9f2a4b "xelatex"
+  "main.aux" 1758454010.95884 11752 39842b11d35ffc8cebe6d5ba9442e68e "xelatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["xdvipdfmx"] 1758453913.61147 "main.xdv" "main.pdf" "main" 1758453917.48894 0
-  "main.xdv" 1758453913.45323 112216 8bd4e9f4d80a7699252b357636019dc2 "xelatex"
+["xdvipdfmx"] 1758454011.11612 "main.xdv" "main.pdf" "main" 1758454015.07202 0
+  "main.xdv" 1758454010.96053 509348 54b404cd80d70ee732dc271627321ca7 "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1758453912.60722 "/Users/tommasoperitore/Documents/University/Masters/CSM_LAB/Report/main.tex" "main.xdv" "main" 1758453917.48781 0
-  "/Users/tommasoperitore/Documents/University/Masters/CSM_LAB/Report/main.tex" 1758453912.42225 54683 da0164e45050a43a27b4144d42033163 ""
+["xelatex"] 1758454010.22327 "/Users/tommasoperitore/Documents/University/Masters/CSM_LAB/Report/main.tex" "main.xdv" "main" 1758454015.07057 0
+  "/Users/tommasoperitore/Documents/University/Masters/CSM_LAB/Report/main.tex" 1758454014.65399 54762 3cb76735a3b1b7e09cf963772d81ce7f ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/map/fontname/texfonts.map" 1741388039 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1741388039 1528 f853c4d1b4e0550255e02831fdc8496f ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/jknappen/ec/tcrm1200.tfm" 1741388039 1536 74b7293ec3713bb7fdca8dd1bd1f469c ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy6.tfm" 1741388039 1124 14ccf5552bc7f77ca02a8a402bea8bfb ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy8.tfm" 1741388039 1120 200be8b775682cdf80acad4be5ef57e4 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1741388039 1004 54797486969f23fa377b128694d548df ""
@@ -44,13 +43,7 @@
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/cm/cmsy10.tfm" 1741388039 1124 6c73e740cf17375f03eec0ee63599741 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/cm/cmsy6.tfm" 1741388039 1116 933a60c408fc0a863a92debe84b2d294 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/cm/cmsy8.tfm" 1741388039 1120 8b7d695260f3cff42e636090a8002094 ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr10.tfm" 1741388039 12056 7e13df7fe4cbce21b072ba7c4f4deb6e ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr12.tfm" 1741388039 12092 7b1546e2d096cfd5dcbd4049b0b1ec2e ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr17.tfm" 1741388039 12156 ca1ae6a3c8564e89597f1f993fba1608 ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr5.tfm" 1741388039 12020 46464c854bf317de2a7a0bbe4a1160ca ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr6.tfm" 1741388039 12048 c1068d0f4772be9b0ec447692e1d6d82 ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr7.tfm" 1741388039 12064 09aa3eeac96bf141d673bb1b0385ce55 ""
-  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/fonts/tfm/public/lm/ec-lmr8.tfm" 1741388039 12064 a35db870f0b76c338d749c56dc030ef5 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/generic/atbegshi/atbegshi.sty" 1741388039 24708 5584a51a7101caf7e6bbf1fc27d8f7b1 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/generic/babel-english/english.ldf" 1741388039 7008 9ff5fdcc865b01beca2b0fe4a46231d4 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/generic/babel/babel.sty" 1741388039 143388 b008e1666520ff43d0878397f2926242 ""
@@ -88,6 +81,7 @@
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/base/atbegshi-ltx.sty" 1741388039 2963 d8ec5a1b4e0a106c5c737900202763e4 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/base/atveryend-ltx.sty" 1741388039 2378 14b657ee5031da98cf91648f19642694 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/base/fontenc.sty" 1741388039 5275 0d62fb62162c7ab056e941ef18c5076d ""
+  "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/base/inputenc.sty" 1741388039 5048 0270515b828149155424600fd2d58ac5 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/base/size12.clo" 1741388039 8449 ffe4ba2166a344827c3a832d1d5e0a91 ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/caption/caption.sty" 1741388039 56128 c2ccf1a29d78c33bc553880402e4fb9a ""
   "/opt/homebrew/Cellar/texlive/20250308_1/share/texmf-dist/tex/latex/caption/caption3.sty" 1741388039 72619 ee90b6612147680fd73c3b1406a74245 ""
@@ -149,11 +143,11 @@
   "images/mx_benchm.png" 1758446248 210549 fd83001276dbcea70baaf6a18c6c110e ""
   "images/pot.png" 1758446246 607188 31509ffba24557456097818007d283c7 ""
   "images/univienna-logo.eps" 1758446246 1370654 52e2b2a40460791169df16e0b551b5ba ""
-  "main.aux" 1758453913.45172 11752 f4ccfe918503ac87d07b5ebb7c9f2a4b "xelatex"
-  "main.bbl" 1758453603.86798 1905 b3121af15b78ebb3390b8d8d9fd2c665 "bibtex main"
-  "main.out" 1758453913.45297 3352 a19add5bc29f3af43be63f2749808823 "xelatex"
-  "main.tex" 1758453912.42225 54683 da0164e45050a43a27b4144d42033163 ""
-  "main.toc" 1758453913.45319 1927 bd7082ad9c305c134f6a48ee27951d61 "xelatex"
+  "main.aux" 1758454010.95884 11752 39842b11d35ffc8cebe6d5ba9442e68e "xelatex"
+  "main.bbl" 1758454010.22107 1905 b3121af15b78ebb3390b8d8d9fd2c665 "bibtex main"
+  "main.out" 1758454010.96012 3352 a19add5bc29f3af43be63f2749808823 "xelatex"
+  "main.tex" 1758454014.65399 54762 3cb76735a3b1b7e09cf963772d81ce7f ""
+  "main.toc" 1758454010.96045 1927 0dd82ec331efae94f2b1ccbfc1f6f0cf "xelatex"
   (generated)
   "main.aux"
   "main.log"
