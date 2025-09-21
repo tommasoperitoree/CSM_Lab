@@ -14,13 +14,13 @@ if __name__ == "__main__":
 
 	### FLAGS FOR BEHAVIOR ###
 	training_conditioning = True
-	all_live_samples = True
+	all_live_samples = False
 	extrapolate = True
 
 	if not training_conditioning : extrapolate = False
 
 	n_mixed_routine_steps = 5
-	max_live_samples_for_training = 3
+	max_live_samples_for_training = 1
 
 	### Define system parameters
 	n_particles = 1  							# Number of particles
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 		else :
 			dir_add += "unconditioned/"
 	else :
-		dir_add = f"last_live_samples/"
+		dir_add = f"last_live_sample/"
 		if training_conditioning :
 			dir_add += "conditioned/"
 		else :
