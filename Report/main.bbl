@@ -1,0 +1,45 @@
+\begin{thebibliography}{1}
+
+\bibitem{Wales_2004}
+David Wales.
+\newblock {\em Energy landscapes}.
+\newblock Cambridge University Press, 2004.
+
+\bibitem{Hoare1979}
+M.~R. Hoare.
+\newblock Structure and dynamics of simple microclusters.
+\newblock In I.~Prigogine and S.~A. Rice, editors, {\em Advances in Chemical Physics}, volume~40, pages 49--135. John Wiley \& Sons, New York, 1979.
+
+\bibitem{Skilling2004}
+John Skilling.
+\newblock Nested sampling.
+\newblock In R.~Fischer, R.~Preuss, and U.~von Toussaint, editors, {\em Bayesian Inference and Maximum Entropy Methods in Science and Engineering}, volume 735 of {\em AIP Conference Proceedings}, pages 395--405, Melville, NY, 2004. American Institute of Physics.
+
+\bibitem{Skilling2006}
+John Skilling.
+\newblock Nested sampling for general bayesian computation.
+\newblock {\em Bayesian Analysis}, 1(4):833--859, 2006.
+
+\bibitem{Skilling2009}
+John Skilling.
+\newblock Nested sampling's convergence.
+\newblock In P.~M. Goggans and C.~Y. Chan, editors, {\em Bayesian Inference and Maximum Entropy Methods in Science and Engineering}, volume 1193 of {\em AIP Conference Proceedings}, pages 277--291, Melville, NY, 2009. American Institute of Physics.
+
+\bibitem{Partay2021NestedSampling}
+Livia~B. P\'artay, G\'abor Cs\'anyi, and Noam Bernstein.
+\newblock Nested sampling for materials.
+\newblock {\em The European Physical Journal B}, 94(8):159, 2021.
+\newblock Topical Review - Statistical and Nonlinear Physics.
+
+\bibitem{Ho2020}
+Jonathan Ho, Ajay Jain, and Pieter Abbeel.
+\newblock Denoising diffusion probabilistic models.
+\newblock {\em Advances in Neural Information Processing Systems}, 33:6840--6851, 2020.
+\newblock Preprint available on arXiv.
+
+\bibitem{Nichol2021ImprovedDDPM}
+Alex Nichol and Prafulla Dhariwal.
+\newblock Improved denoising diffusion probabilistic models.
+\newblock {\em arXiv preprint arXiv:2102.09672}, 2021.
+
+\end{thebibliography}

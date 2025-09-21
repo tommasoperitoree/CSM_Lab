@@ -1,0 +1,24 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Nested Sampling}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}The algorithm}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Points generation}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Implementation and potential}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Diffusion Models}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Forward process}{6}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Reverse process}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Training objective}{8}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}Simplifying the loss function}{8}{subsubsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.4}Sampling procedure}{10}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Adjustments to the model}{10}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Mixed algorithm implementation}{10}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Critical aspects}{11}{subsection.4.1}%
+\contentsline {section}{\numberline {5}Results}{12}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Diffusion model evaluation}{12}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Mixed algorithm}{14}{subsection.5.2}%
+\contentsline {subsubsection}{\numberline {5.2.1}Conditioning}{14}{subsubsection.5.2.1}%
+\contentsline {subsubsection}{\numberline {5.2.2}Multiple live sets to train}{15}{subsubsection.5.2.2}%
+\contentsline {subsubsection}{\numberline {5.2.3}Extrapolation}{15}{subsubsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.4}Performances}{16}{subsubsection.5.2.4}%
+\contentsline {section}{\numberline {6}Conclusions}{19}{section.6}%
+\contentsline {section}{References}{20}{section*.13}%
