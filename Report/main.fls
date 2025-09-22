@@ -301,12 +301,12 @@ INPUT ./images/univienna-logo.eps
 INPUT ./images/cond_last.png
 INPUT ./images/cond_last.png
 INPUT ./images/cond_last.png
-INPUT ./images/cond_comp.png
-INPUT ./images/cond_comp.png
-INPUT ./images/cond_comp.png
 INPUT ./images/univienna-logo.eps
 INPUT ./images/univienna-logo.eps
 INPUT ./images/univienna-logo.eps
+INPUT ./images/cond_comp.png
+INPUT ./images/cond_comp.png
+INPUT ./images/cond_comp.png
 INPUT ./images/extr_comp.png
 INPUT ./images/extr_comp.png
 INPUT ./images/extr_comp.png
